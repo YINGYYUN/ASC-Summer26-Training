@@ -1,0 +1,90 @@
+# ============================================
+# 编辑器 & 操作系统
+# ============================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ============================================
+# Keil MDK 构建产物
+# ============================================
+# 输出目录
+Objects/
+Listings/
+
+# 中间文件
+*.o
+*.obj
+*.d
+*.crf
+*.lst
+*.lnp
+*.axf
+*.elf
+*.out
+*.map
+*.htm
+*.dep
+*.tmp
+*.bak
+*.tra
+*.iex
+*.__i
+*.sct
+
+# 编译日志/报告
+*.plg
+*.rpt
+
+# J-Link
+JLinkLog.txt
+JLinkSettings.ini
+
+# Keil 用户界面配置（每用户不同）
+*.uvguix.*
+*.uvgui.*
+*.uvgui
+*.scvd
+
+# Keil 项目浏览
+*.mpf
+*.mpj
+*.edk
+*.ddk
+*.omf
+
+# Keil V6 编译缓存
+*.opt
+.browse/
+
+# ============================================
+# IAR 构建产物
+# ============================================
+# 调试输出
+Debug/
+Release/
+program/Debug/
+program/Release/
+
+# 生成的 settings（.cspy.bat, .dnx 等）
+program/settings/
+
+# 中间文件
+*.crun
+*.dbgdt
+*.xcl
+*.reggroups
+*.pbi
+*.ps1
+
+# ============================================
+# 通用
+# ============================================
+# 如有需要，可取消下面注释来忽略固件输出文件
+# *.hex
+# *.bin
