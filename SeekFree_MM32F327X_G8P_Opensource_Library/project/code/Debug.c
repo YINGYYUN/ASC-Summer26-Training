@@ -31,10 +31,9 @@ void Debug_UART_UI(void)
     ips200_show_string(0  ,16 , "==============================");
     ips200_show_string(0  ,32 , "  [Press CONFIRM to send TX]");
     ips200_show_string(0  ,48 , "TX:");
-	ips200_show_string(0  ,48 , "TX:");
-    // 占位(必要时上一行溢出的字符会切割到这一行显示)
+    // TX溢出字符会切割到这一行显示
     ips200_show_string(0  ,80 , "RX:");
-    // 占位(必要时上一行溢出的字符会切割到这一行显示)
+    // RX溢出字符会切割到这一行显示
 }
 /**********************************************************/
 /*----------------------------------------[E] 界面样式 [E]*/
@@ -157,37 +156,87 @@ int Debug_Page_Menu(void)
 /*[S] 调试逻辑 [S]----------------------------------------*/
 /**********************************************************/
 
+// 显示一行文本，不足用空格填充，确保覆盖旧内容
+static void Debug_UART_ShowLine (uint16 x, uint16 y, uint8 width, const char *str)
+{
+    char line[31];
+    uint8_t i, j = 0;
+
+    // 只复制可打印字符，跳过控制字符，防止字库数组负索引
+    for(i = 0; '\0' != str[i] && j < width; i++)
+    {
+        if(str[i] >= 32 && str[i] <= 126)
+            line[j++] = str[i];
+    }
+    memset(&line[j], ' ', width - j);                                           // 剩余填充空格
+    line[width] = '\0';
+    ips200_show_string(x, y, line);
+}
+
 int Debug_UART(void)
 {
     Debug_UART_UI();
-	
-	while(1)
-	{
-		/* 按键处理*/
-        if (KEY_SHORT_PRESS == key_get_state(KEY_UP))
-        {
-            key_clear_state(KEY_UP);
-        }
-        else if (KEY_SHORT_PRESS == key_get_state(KEY_DOWN))
-        {
-            key_clear_state(KEY_DOWN); 
-        }
-        else if (KEY_SHORT_PRESS == key_get_state(KEY_CONFIRM))
+
+    char tx_buf[58];                                                            // TX 缓冲区 27+30+1=58
+    char rx_disp[58];                                                           // 用于显示的 RX 内容
+    uint8_t tx_dirty = 0;
+    uint8_t rx_dirty = 0;
+
+    tx_buf[0] = '\0';
+    rx_disp[0] = '\0';
+
+    while(1)
+    {
+        /* 按键处理 */
+        key_clear_state(KEY_UP);                                                // 仅消费标志位
+        key_clear_state(KEY_DOWN);                                              // 仅消费标志位
+        if (KEY_SHORT_PRESS == key_get_state(KEY_CONFIRM))
         {
             key_clear_state(KEY_CONFIRM);
+            uart_write_string(UART_6, "TEST_TXT\n");
+            strcpy(tx_buf, "TEST_TXT");
+            tx_dirty = 1;
         }
-        else if (KEY_SHORT_PRESS == key_get_state(KEY_BACK))    
+        else if (KEY_SHORT_PRESS == key_get_state(KEY_BACK))
         {
-			key_clear_state(KEY_BACK);
-            // 返回上一级界面
-            return 0;   
+            key_clear_state(KEY_BACK);
+            return 0;
         }
-		
-		
-		
-		
-		
-	}
+
+        /* 接收处理 — 使用 zf_driver_uart 帧解析 */
+        {
+            char *frame = uart_query_frame(UART_6);
+            if(frame)
+            {
+                strcpy(rx_disp, frame);
+                rx_dirty = 1;
+            }
+        }
+
+        /* 显示更新 - TX */
+        if(tx_dirty)
+        {
+            tx_dirty = 0;
+            uint8_t len = strlen(tx_buf);
+            Debug_UART_ShowLine(24, 48, 27, tx_buf);                            // TX 第一行 "TX:"后面
+            if(len > 27)
+                Debug_UART_ShowLine(0, 64, 30, tx_buf + 27);                    // TX 溢出到第二行
+            else
+                ips200_show_string(0, 64, "                              ");     // 清除溢出行
+        }
+
+        /* 显示更新 - RX */
+        if(rx_dirty)
+        {
+            rx_dirty = 0;
+            uint8_t len = strlen(rx_disp);
+            Debug_UART_ShowLine(24, 80, 27, rx_disp);                           // RX 第一行 "RX:"后面
+            if(len > 27)
+                Debug_UART_ShowLine(0, 96, 30, rx_disp + 27);                   // RX 溢出到第二行
+            else
+                ips200_show_string(0, 96, "                              ");
+        }
+    }
 }
 /**********************************************************/
 /*----------------------------------------[E] 调试逻辑 [E]*/

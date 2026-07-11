@@ -129,10 +129,14 @@ void    uart_write_string                   (uart_index_enum uartn, const char *
 uint8   uart_read_byte                      (uart_index_enum uartn);
 uint8   uart_query_byte                     (uart_index_enum uartn, uint8 *dat);
 
+#define UART_FRAME_BUF_SIZE                 (64)                                // 帧解析缓冲区大小
+char*   uart_query_frame                    (uart_index_enum uartn);            // 从 UART 提取 [内容]\n 包体
+
 void    uart_tx_interrupt                   (uart_index_enum uartn, uint32 status);
 void    uart_rx_interrupt                   (uart_index_enum uartn, uint32 status);
 
 void    uart_init                           (uart_index_enum uartn, uint32 baud, uart_tx_pin_enum tx_pin, uart_rx_pin_enum rx_pin);
+void    uart_printf                          (uart_index_enum uartn, const char *format, ...);
 
 #ifdef COMPATIBLE_WITH_OLDER_VERSIONS                                           // 兼容旧版本开源库接口名称
 #define uart_putchar(uart_n, dat)           (uart_write_byte((uart_n), (dat)))

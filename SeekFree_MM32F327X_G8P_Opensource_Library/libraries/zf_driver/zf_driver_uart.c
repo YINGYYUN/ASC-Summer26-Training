@@ -41,6 +41,10 @@
 
 #include "zf_driver_uart.h"
 
+#include <stdarg.h>
+#include <stdio.h>
+#include <string.h>
+
 static  UART_Type  *uart_index[8]           = {UART1, UART2, UART3, UART4, UART5, UART6, UART7, UART8};
 static  IRQn_Type   uart_irq[8]             = {UART1_IRQn, UART2_IRQn, UART3_IRQn, UART4_IRQn, UART5_IRQn, UART6_IRQn, UART7_IRQn, UART8_IRQn};
 static  uint8       uart_interrupt_state[8] = {0, 0, 0, 0, 0, 0, 0, 0};
@@ -264,4 +268,104 @@ void uart_init(uart_index_enum uart_n, uint32 baud, uart_tx_pin_enum tx_pin, uar
     }
     uart_index[uart_n]->CCR |= (0x00000003 << 4);                               // 8bits 数据位
     uart_index[uart_n]->GCR |= (0x00000019);                                    // 使能 TX RX UART
+}
+
+//-------------------------------------------------------------------------------------------------------------------
+// 函数简介     串口格式化输出 (printf风格)
+// 参数说明     uart_n          串口模块号 参照 zf_driver_uart.h 内 uart_index_enum 枚举体定义
+// 参数说明     format          格式化字符串
+// 参数说明     ...             可变参数
+// 返回参数     void
+// 使用示例     uart_printf(UART_6, "value = %d, temp = %.1f\r\n", 42, 36.5);
+// 备注信息     缓冲区默认 256 字节，超长会被截断
+//-------------------------------------------------------------------------------------------------------------------
+void uart_printf (uart_index_enum uart_n, const char *format, ...)
+{
+    char buffer[256];
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buffer, sizeof(buffer), format, args);
+    va_end(args);
+    uart_write_string(uart_n, buffer);
+}
+
+//-------------------------------------------------------------------------------------------------------------------
+// 函数简介     从 UART 轮询提取包体帧 [内容]
+// 参数说明     uartn           串口模块号 参照 zf_driver_uart.h 内 uart_index_enum 枚举体定义
+// 返回参数     char*           包体内容指针 (不含括号), 无完整帧时返回 NULL
+// 使用示例     char *frame = uart_query_frame(UART_6);
+//              if(frame) { /* 处理 frame */ }
+// 备注信息     收到 ] 即返回包体内容，不依赖换行符
+//              \r \n 用于清除非帧数据，缓冲区满自动重置
+//              返回的指针在下一次调用前有效，缓冲区大小由 UART_FRAME_BUF_SIZE 定义
+//-------------------------------------------------------------------------------------------------------------------
+char* uart_query_frame (uart_index_enum uartn)
+{
+    static struct
+    {
+        char rx_buf[UART_FRAME_BUF_SIZE];
+        int  rx_pos;
+        char frame[UART_FRAME_BUF_SIZE];
+    }ctx[8];                                                                    // 每个 UART 独立状态
+
+    uint8_t byte;
+    char *start, *stop, *eol;
+
+    // 读入所有可用字节
+    while(uart_query_byte(uartn, &byte))
+    {
+        if(ctx[uartn].rx_pos >= (int)sizeof(ctx[uartn].rx_buf) - 1)            // 满缓冲保护
+        {
+            ctx[uartn].rx_pos = 0;
+            ctx[uartn].rx_buf[0] = '\0';
+        }
+        ctx[uartn].rx_buf[ctx[uartn].rx_pos++] = (char)byte;
+        ctx[uartn].rx_buf[ctx[uartn].rx_pos] = '\0';
+    }
+
+    // 查找 [...] 帧
+    start = strchr(ctx[uartn].rx_buf, '[');
+    stop  = start ? strchr(start + 1, ']') : NULL;
+
+    // 查找行尾标记 (用于清除非帧数据)
+    eol = strchr(ctx[uartn].rx_buf, '\r');
+    if(NULL == eol) eol = strchr(ctx[uartn].rx_buf, '\n');
+    if(eol)
+    {
+        char *alt = strchr(ctx[uartn].rx_buf, '\n');
+        if(alt && alt < eol) eol = alt;                                         // 取最前的
+    }
+
+    if(start && stop && stop > start + 1)                                       // 有效包体 [...]，] 触发返回
+    {
+        int len = (int)(stop - start - 1);
+        if(len >= (int)sizeof(ctx[uartn].frame)) len = (int)sizeof(ctx[uartn].frame) - 1;
+        memcpy(ctx[uartn].frame, start + 1, (size_t)len);
+        ctx[uartn].frame[len] = '\0';
+
+        // 移除已处理数据 (到 ] 之后)
+        int remain = ctx[uartn].rx_pos - (int)(stop + 1 - ctx[uartn].rx_buf);
+        if(remain > 0)
+            memmove(ctx[uartn].rx_buf, stop + 1, (size_t)remain);
+        else
+            remain = 0;
+        ctx[uartn].rx_pos = remain;
+        ctx[uartn].rx_buf[remain] = '\0';
+
+        return ctx[uartn].frame;
+    }
+
+    // 无有效帧，但有 \r 或 \n → 丢弃此行（防止缓冲区无限增长）
+    if(eol)
+    {
+        int remain = ctx[uartn].rx_pos - (int)(eol + 1 - ctx[uartn].rx_buf);
+        if(remain > 0)
+            memmove(ctx[uartn].rx_buf, eol + 1, (size_t)remain);
+        else
+            remain = 0;
+        ctx[uartn].rx_pos = remain;
+        ctx[uartn].rx_buf[remain] = '\0';
+    }
+
+    return NULL;
 }

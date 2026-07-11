@@ -14,13 +14,15 @@ void Peripheral_Init(void)
 {
     // IPS200 初始化 (SPI 接口串口两寸屏)
 	ips200_init(IPS200_TYPE_SPI);
-    ips200_set_color(RGB565_WHITE, RGB565_BLACK);       // 白色字，黑色背景
+    ips200_set_color(RGB565_YELLOW, RGB565_BLACK);       // 字，背景
     ips200_clear();                                     // 清屏为黑色
 	
 	// 按键初始化(10ms扫描周期)
     key_init(10);
 
-	
+    // CH-04 蓝牙串口初始化
+    uart_init(UART_6, 9600, UART6_TX_C6, UART6_RX_C7);
+    uart_printf(UART_6, "CH-04 ready, baud=%d\r\n", 9600);
 }
 
 
@@ -90,8 +92,7 @@ void Menu_Show(void)
             key_clear_state(KEY_CONFIRM);
             menu_flag_temp = menu_flag;
         }
-        // 仅消费标志位
-        key_clear_state(KEY_BACK); 
+        key_clear_state(KEY_BACK); // 仅消费标志位
 
 
         /* 模式跳转*/
