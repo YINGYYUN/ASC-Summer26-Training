@@ -197,6 +197,7 @@ void    ips200_show_chinese             (uint16 x, uint16 y, uint8 size, const u
 //-------------------------------------------------------------------------------------------------------------------
 #define ips200_displayimage8660(p, width, height)       (ips200_show_rgb565_image(0, 0, (p), SCC8660_W, SCC8660_H, (width), (height), 1))
 
+void    ips200_printf                   (uint16 x, uint16 y, const char *format, ...);
 void    ips200_init                     (ips200_type_enum type_select);
 
 #endif

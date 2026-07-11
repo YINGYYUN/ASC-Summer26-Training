@@ -19,6 +19,7 @@ void Debug_Page_Menu_UI(uint8_t Page)
 			ips200_show_string(8  ,0  , "[Debug]");
 			ips200_show_string(0  ,16 , "==============================");
 			ips200_show_string(10 ,32 , "UART");
+			ips200_show_string(10 ,48 , "Motor");
 		
 			break;
 	}
@@ -35,6 +36,21 @@ void Debug_UART_UI(void)
     ips200_show_string(0  ,80 , "RX:");
     // RX溢出字符会切割到这一行显示
 }
+
+// [三级界面]Motor调试界面 驱动+编码器
+void Debug_Motor_UI(void)
+{
+    ips200_show_string(8  ,0  , "[DEBUG]-Motor");
+    ips200_show_string(0  ,16 , "==============================");
+	// 空行
+    ips200_show_string(10 ,48 , "PWM 1:");
+	ips200_show_string(10 ,64 , "PWM 2:");
+	// 空行
+	ips200_show_string(0  ,96 , "ENC 1:");
+	ips200_show_string(0  ,112, "ENC 2:");
+    ips200_show_string(0  ,128, "SUM 1:");
+	ips200_show_string(0  ,144, "SUM 2:");
+}
 /**********************************************************/
 /*----------------------------------------[E] 界面样式 [E]*/
 /**********************************************************/
@@ -45,7 +61,8 @@ void Debug_UART_UI(void)
 /**********************************************************/
 
 // 相关函数提前声明
-int Debug_UART         (void);
+int Debug_UART         	(void);
+int Debug_Motor         (void);
 
 
 // [二级界面]Debug模式界面
@@ -71,14 +88,14 @@ int Debug_Page_Menu(void)
             key_clear_state(KEY_UP);
             key_pressed = 1;
             Debug_Page_flag --;
-            if (Debug_Page_flag < 1)Debug_Page_flag = 1;
+            if (Debug_Page_flag < 1)Debug_Page_flag = 2;
         }
         else if (KEY_SHORT_PRESS == key_get_state(KEY_DOWN))
         {
             key_clear_state(KEY_DOWN); 
             key_pressed = 1;
             Debug_Page_flag ++;
-            if (Debug_Page_flag > 1)Debug_Page_flag = 1;
+            if (Debug_Page_flag > 2)Debug_Page_flag = 1;
         }
         else if (KEY_SHORT_PRESS == key_get_state(KEY_CONFIRM))
         {
@@ -104,45 +121,29 @@ int Debug_Page_Menu(void)
             Debug_Page_Menu_UI(1);
             ips200_show_string(0  ,32 , ">");
         }
+		else if (Debug_Page_flag_temp == 2)
+        {
+            ips200_clear();
+            Debug_Motor();
+            
+            // 从子界面返回后
+            ips200_clear();
+            Debug_Page_Menu_UI(1);
+            ips200_show_string(0  ,48 , ">");
+        }
 
         
-
         /* 显示更新*/
         if (key_pressed)
         {
-            switch (Debug_Page_flag)
-            {
-                case 1:
-                    ips200_clear();
-                    Debug_Page_Menu_UI(1);
-                    ips200_show_string(0  ,32 , ">");
-
-                    break;
-                case 2:
-                    ips200_clear();
-                    Debug_Page_Menu_UI(1);
-                    ips200_show_string(0  ,48 , ">");
-
-                    break;
-                case 3:
-                    ips200_clear();
-                    Debug_Page_Menu_UI(1);
-                    ips200_show_string(0  ,64 , ">");
-
-                    break;
-                case 4:
-                    ips200_clear();
-                    Debug_Page_Menu_UI(1);
-                    ips200_show_string(0  ,80 , ">");
-
-                    break;
-                case 5:
-                    ips200_clear();
-                    Debug_Page_Menu_UI(1);
-                    ips200_show_string(0  ,96 , ">");
-
-                    break;
-            }
+			// 清理光标
+			ips200_show_string(0  ,32 , " ");
+			ips200_show_string(0  ,48 , " ");
+			ips200_show_string(0  ,64 , " ");
+			ips200_show_string(0  ,80 , " ");
+			ips200_show_string(0  ,96 , " ");
+			// 显示光标
+			ips200_show_string(0  ,16 + 16*Debug_Page_flag , ">");
         }
     }
 }
@@ -156,6 +157,12 @@ int Debug_Page_Menu(void)
 /*[S] 调试逻辑 [S]----------------------------------------*/
 /**********************************************************/
 
+//  #   #   ###   ####   #####  
+//  #   #  #   #  #   #    #    
+//  #   #  #####  ####     #    
+//  #   #  #   #  #  #     #    
+//   ###   #   #  #   #    #    
+//
 // 显示一行文本，不足用空格填充，确保覆盖旧内容
 static void Debug_UART_ShowLine (uint16 x, uint16 y, uint8 width, const char *str)
 {
@@ -173,6 +180,7 @@ static void Debug_UART_ShowLine (uint16 x, uint16 y, uint8 width, const char *st
     ips200_show_string(x, y, line);
 }
 
+// [三级界面]串口/蓝牙调试(接收封装包体)
 int Debug_UART(void)
 {
     Debug_UART_UI();
@@ -200,8 +208,10 @@ int Debug_UART(void)
         else if (KEY_SHORT_PRESS == key_get_state(KEY_BACK))
         {
             key_clear_state(KEY_BACK);
+            // 返回上一级界面
             return 0;
         }
+
 
         /* 接收处理 — 使用 zf_driver_uart 帧解析 */
         {
@@ -212,6 +222,7 @@ int Debug_UART(void)
                 rx_dirty = 1;
             }
         }
+
 
         /* 显示更新 - TX */
         if(tx_dirty)
@@ -224,6 +235,7 @@ int Debug_UART(void)
             else
                 ips200_show_string(0, 64, "                              ");     // 清除溢出行
         }
+
 
         /* 显示更新 - RX */
         if(rx_dirty)
@@ -238,6 +250,166 @@ int Debug_UART(void)
         }
     }
 }
+
+
+//	#   #   ###   #####   ###   ####   
+//  ## ##  #   #    #    #   #  #   #  
+//  # # #  #   #    #    #   #  ####   
+//  #   #  #   #    #    #   #  #  #   
+//  #   #   ###     #     ###   #   #  
+//
+// [三级界面]电机调试
+int Debug_Motor (void)
+{
+    // 电机驱动相关,为方便调用元素数量为3
+    int16_t pwm[3] = {0};
+    Motor_Set(1,0);
+    Motor_Set(2,0);
+
+    // 编码器相关,为方便调用元素数量为3
+    int32_t enc_cur[3] = {0};
+    int32_t enc_sum[3] = {0};
+    ENC1_CLEAR();
+    ENC2_CLEAR();
+
+    // 参考计时值重置
+    Time_Count1 = 0;
+    Time_Count2 = 0;
+
+    Debug_Motor_UI();
+    ips200_show_string(0 ,48 , ">");
+    ips200_printf(58 ,48 , "%d  ", pwm[1]);
+    ips200_printf(58 ,64 , "%d  ", pwm[2]);
+    ips200_printf(58 ,96 , "%d  ", enc_cur[1]);
+    ips200_printf(58 ,112, "%d  ", enc_cur[2]);
+    ips200_printf(58 ,128, "%d  ", enc_sum[1]);
+    ips200_printf(58 ,144, "%d  ", enc_sum[2]);
+    // 电机调试界面光标 标志位
+    // 正常的命名为Debug_Motor_flag，此处进行简化
+    uint8_t Debug_M_f = 1;
+
+    while(1)
+    {
+        // 存储确认键被按下时Debug_M_f的值的临时变量，默认为无效值0
+        uint8_t Debug_M_f_temp = 0;
+        // 上/下按键是否被按下过
+        uint8_t key_pressed = 0;
+
+        /* 按键处理 */
+        if (KEY_SHORT_PRESS == key_get_state(KEY_UP))
+        {
+            key_clear_state(KEY_UP);
+            key_pressed = 1;
+            Debug_M_f --;
+            if (Debug_M_f < 1){Debug_M_f = 2;}
+        }
+        else if (KEY_SHORT_PRESS == key_get_state(KEY_DOWN))
+        {
+            key_clear_state(KEY_DOWN);
+            key_pressed = 1;
+            Debug_M_f ++;
+            if (Debug_M_f > 2){Debug_M_f = 1;}      
+        }
+        else if (KEY_SHORT_PRESS == key_get_state(KEY_CONFIRM))
+        {
+            key_clear_state(KEY_CONFIRM);
+           Debug_M_f_temp = Debug_M_f;
+        }
+        else if (KEY_SHORT_PRESS == key_get_state(KEY_BACK))
+        {
+            key_clear_state(KEY_BACK);
+
+            Motor_Set(1,0);
+            Motor_Set(2,0);
+            // 返回上一级界面
+            return 0;
+        }
+            
+            
+        /* 参数设置*/
+        if (Debug_M_f_temp == 1 || Debug_M_f_temp == 2)
+        {
+            ips200_show_string(0 ,32 + 16*Debug_M_f_temp , "=");
+            
+            // 电机手动设置
+            while(1)
+            {
+                /* 按键解析*/
+                if (KEY_SHORT_PRESS == key_get_state(KEY_UP))
+                {
+                    key_clear_state(KEY_UP);
+                    pwm[Debug_M_f] += 100;
+                    if (pwm[Debug_M_f] > 10000)pwm[Debug_M_f] = 10000;
+                    Motor_Set(Debug_M_f, pwm[Debug_M_f]);
+                    ips200_printf(58 ,32 + 16*Debug_M_f, "%d  ", pwm[Debug_M_f]);
+                }
+                else if (KEY_SHORT_PRESS == key_get_state(KEY_DOWN))
+                {
+                    key_clear_state(KEY_DOWN);
+                    pwm[Debug_M_f] -= 100;
+                    if (pwm[Debug_M_f] < -10000)pwm[Debug_M_f] = -10000;
+                    Motor_Set(Debug_M_f, pwm[Debug_M_f]);
+                    ips200_printf(58 ,32 + 16*Debug_M_f, "%d  ", pwm[Debug_M_f]);
+                }
+                else if (KEY_SHORT_PRESS == key_get_state(KEY_CONFIRM) || 
+                        KEY_SHORT_PRESS == key_get_state(KEY_BACK))
+                {
+                    key_clear_state(KEY_CONFIRM);
+                    key_clear_state(KEY_BACK);
+                    
+                    break;  // 退出修改模式
+                }
+                
+                // 电机编码器读取
+                if (Time_Count2 > 10)// 10 * 10 ms周期
+                {
+                    Time_Count2 = 0;
+                    
+                    enc_cur[1] = ENC1_GET();
+                    enc_cur[2] = ENC2_GET();
+                    ENC1_CLEAR();
+                    ENC2_CLEAR();
+                    enc_sum[1] += enc_cur[1];
+                    enc_sum[2] += enc_cur[2];
+                    ips200_printf(58 ,96 , "%d  ", enc_cur[1]);
+                    ips200_printf(58 ,112, "%d  ", enc_cur[2]);
+                    ips200_printf(58 ,128, "%d  ", enc_sum[1]);
+                    ips200_printf(58 ,144, "%d  ", enc_sum[2]);
+                }
+            }
+        }
+            
+            
+        // 电机编码器读取
+        if (Time_Count2 > 10)// 10 * 10 ms周期
+        {
+            Time_Count2 = 0;
+            
+            enc_cur[1] = ENC1_GET();
+            enc_cur[2] = ENC2_GET();
+            ENC1_CLEAR();
+            ENC2_CLEAR();
+            enc_sum[1] += enc_cur[1];
+            enc_sum[2] += enc_cur[2];
+            ips200_printf(58 ,96 , "%d  ", enc_cur[1]);
+            ips200_printf(58 ,112, "%d  ", enc_cur[2]);
+            ips200_printf(58 ,128, "%d  ", enc_sum[1]);
+            ips200_printf(58 ,144, "%d  ", enc_sum[2]);
+        }
+            
+            
+        /* 显示更新*/
+        if (key_pressed)
+        {
+            // 清理光标
+            ips200_show_string(0 ,48 , " ");
+            ips200_show_string(0 ,64 , " ");
+            // 显示光标
+            ips200_show_string(0 ,32 + 16*Debug_M_f  , ">");
+        }
+    }
+}
+
 /**********************************************************/
 /*----------------------------------------[E] 调试逻辑 [E]*/
 /**********************************************************/

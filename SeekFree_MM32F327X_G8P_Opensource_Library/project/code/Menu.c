@@ -23,6 +23,15 @@ void Peripheral_Init(void)
     // CH-04 蓝牙串口初始化
     uart_init(UART_6, 9600, UART6_TX_C6, UART6_RX_C7);
     uart_printf(UART_6, "CH-04 ready, baud=%d\r\n", 9600);
+	
+	// 电机驱动初始化
+	Motor_init();
+	
+	// 编码器1: B4 + B5 → TIM3
+	encoder_quad_init(ENCODER_1, ENC_1_P_CH1, ENC_1_P_CH2);
+
+	// 编码器2: B6 + B7 → TIM4
+	encoder_quad_init(ENCODER_2, ENC_2_P_CH1, ENC_2_P_CH2);
 }
 
 
@@ -72,6 +81,7 @@ void Menu_Show(void)
 		// 上/下按键是否被按下过
 		uint8_t key_pressed = 0;
 
+        
         /* 按键处理*/
         if (KEY_SHORT_PRESS == key_get_state(KEY_UP))
         {
@@ -121,22 +131,14 @@ void Menu_Show(void)
         /* 显示更新*/
         if (key_pressed)
         {
-			// 首先清除其他光标
+			// 清理光标
 			ips200_show_string(0  ,32 , " ");
 			ips200_show_string(0  ,48 , " ");
-			
-            switch (menu_flag)
-            {
-                // 在Process模式的光标
-                case 1:
-                    ips200_show_string(0  ,32 , ">");
-                    break;
-
-                // 在Debug模式的光标
-                case 2:
-                    ips200_show_string(0  ,48 , ">");
-                    break;
-            }
+			ips200_show_string(0  ,64 , " ");
+			ips200_show_string(0  ,80 , " ");
+			ips200_show_string(0  ,96 , " ");
+			// 显示光标
+			ips200_show_string(0  ,16 + 16*menu_flag , ">");
         }
     }
 }

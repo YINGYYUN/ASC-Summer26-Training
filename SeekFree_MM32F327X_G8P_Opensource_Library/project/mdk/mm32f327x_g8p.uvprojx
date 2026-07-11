@@ -429,6 +429,21 @@
               <FileType>5</FileType>
               <FilePath>..\code\Debug.h</FilePath>
             </File>
+            <File>
+              <FileName>drv8701_motor.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\code\drv8701_motor.c</FilePath>
+            </File>
+            <File>
+              <FileName>drv8701_motor.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\code\drv8701_motor.h</FilePath>
+            </File>
+            <File>
+              <FileName>define.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\code\define.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
