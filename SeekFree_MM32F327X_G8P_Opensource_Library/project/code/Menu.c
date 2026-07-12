@@ -130,7 +130,7 @@ void Menu_Show(void)
         }
 
 
-        /* 显示更新 */
+        /* 光标更新 */
         if (key_pressed)
         {
 			// 清理光标

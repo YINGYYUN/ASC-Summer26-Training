@@ -20,7 +20,8 @@ void Debug_Page_Menu_UI(uint8_t Page)
 			ips200_show_string(0  ,16 , "==============================");
 			ips200_show_string(10 ,32 , "UART");    // CH-04蓝牙 / 串口
 			ips200_show_string(10 ,48 , "Motor");   // 电机
-            ips200_show_string(10 ,64 , "MT9V03x"); // 总钻风摄像头
+			ips200_show_string(10 ,64 , "Motor_PID");   // 电机PID
+            ips200_show_string(10 ,80 , "MT9V03x"); // 总钻风摄像头
 		
 			break;
 	}
@@ -53,6 +54,21 @@ void Debug_Motor_UI(void)
 	ips200_show_string(0  ,144, "SUM 2:");
 }
 
+// [三级界面]Motor_PID调试界面   
+void Debug_Motor_PID_UI(void)
+{
+    ips200_show_string(8  ,0  , "[DEBUG]-Motor-PID");
+    ips200_show_string(0  ,16 , "==============================");
+	// 空行
+    ips200_show_string(10 ,48 , "TAR 1:");
+	ips200_show_string(10 ,64 , "TAR 2:");
+	// 空行
+	ips200_show_string(0  ,96 , "ENC 1:");
+	ips200_show_string(0  ,112, "ENC 2:");
+	ips200_show_string(10 ,128, "PWM 1:");
+	ips200_show_string(10 ,144, "PWM 2:");
+}
+
 // [三级界面]MT9V03x调试界面    总钻风
 void Debug_MT9V03x_UI(void)
 {
@@ -71,6 +87,7 @@ void Debug_MT9V03x_UI(void)
 // 相关函数提前声明
 int Debug_UART         	(void);
 int Debug_Motor         (void);
+int Debug_Motor_PID      (void);
 int Debug_MT9V03x       (void);
 
 
@@ -97,14 +114,14 @@ int Debug_Page_Menu(void)
             key_clear_state(KEY_UP);
             key_pressed = 1;
             Debug_Page_flag --;
-            if (Debug_Page_flag < 1)Debug_Page_flag = 2;
+            if (Debug_Page_flag < 1)Debug_Page_flag = 4;
         }
         else if (KEY_SHORT_PRESS == key_get_state(KEY_DOWN))
         {
             key_clear_state(KEY_DOWN); 
             key_pressed = 1;
             Debug_Page_flag ++;
-            if (Debug_Page_flag > 2)Debug_Page_flag = 1;
+            if (Debug_Page_flag > 4)Debug_Page_flag = 1;
         }
         else if (KEY_SHORT_PRESS == key_get_state(KEY_CONFIRM))
         {
@@ -143,12 +160,22 @@ int Debug_Page_Menu(void)
         else if (Debug_Page_flag_temp == 3)
         {
             ips200_clear();
-            Debug_MT9V03x();
+            Debug_Motor_PID();
             
             // 从子界面返回后
             ips200_clear();
             Debug_Page_Menu_UI(1);
             ips200_show_string(0  ,64 , ">");
+        }
+		else if (Debug_Page_flag_temp == 4)
+        {
+            ips200_clear();
+            Debug_MT9V03x();
+            
+            // 从子界面返回后
+            ips200_clear();
+            Debug_Page_Menu_UI(1);
+            ips200_show_string(0  ,80 , ">");
         }
 
         
@@ -303,6 +330,7 @@ int Debug_Motor (void)
     ips200_printf(58 ,112, "%d  ", enc_cur[2]);
     ips200_printf(58 ,128, "%d  ", enc_sum[1]);
     ips200_printf(58 ,144, "%d  ", enc_sum[2]);
+
     // 电机调试界面光标 标志位
     // 正常的命名为Debug_Motor_flag，此处进行简化
     uint8_t Debug_M_f = 1;
@@ -380,7 +408,7 @@ int Debug_Motor (void)
                 }
                 
                 /* 电机编码器读取 */
-                if (Time_Count2 > 10)// 10 * 10 ms周期
+                if (Time_Count2 > 5)// 10 * 5 ms周期
                 {
                     Time_Count2 = 0;
                     
@@ -400,7 +428,7 @@ int Debug_Motor (void)
             
             
         /* 电机编码器读取 */
-        if (Time_Count2 > 10)// 10 * 10 ms周期
+        if (Time_Count2 > 5)// 10 * 5 ms周期
         {
             Time_Count2 = 0;
             
@@ -417,7 +445,7 @@ int Debug_Motor (void)
         }
             
             
-        /* 显示更新 */
+        /* 光标更新 */
         if (key_pressed)
         {
             // 清理光标
@@ -425,6 +453,214 @@ int Debug_Motor (void)
             ips200_show_string(0 ,64 , " ");
             // 显示光标
             ips200_show_string(0 ,32 + 16*Debug_M_f  , ">");
+        }
+    }
+}
+
+
+//	#   #   ###   #####   ###   ####          ####   #####  ####   
+//  ## ##  #   #    #    #   #  #   #         #   #    #    #   #  
+//  # # #  #   #    #    #   #  ####    ###   ####     #    #   #  
+//  #   #  #   #    #    #   #  #  #          #        #    #   #  
+//  #   #   ###     #     ###   #   #         #      #####  ####   
+//
+// [三级界面]电机调试
+int Debug_Motor_PID (void)
+{
+    // PID期望值相关,为方便调用元素数量为3
+    int16_t enc_tar[3] = {0};
+    // 重置中间量
+    PID_INC_Init(&Motor_1_PID);    
+    PID_INC_Init(&Motor_2_PID);
+
+    // 暂时方法,有其他替代方法时，需要注意此处的直接赋值
+    Motor_1_PID.Kp = 25;
+    Motor_1_PID.Ki = 2;
+    Motor_1_PID.Kd = 8;
+
+    Motor_2_PID.Kp = 25;
+    Motor_2_PID.Ki = 2;
+    Motor_2_PID.Kd = 8;
+
+    // 编码器相关,为方便调用元素数量为3
+    int16_t enc_cur[3] = {0};
+    ENC1_CLEAR();
+    ENC2_CLEAR();
+
+    // 电机速度重置
+    Motor_Set(1,0);
+    Motor_Set(2,0);
+
+    // 参考计时值重置
+    Time_Count1 = 0;
+    Time_Count2 = 0;
+
+	Debug_Motor_PID_UI();
+    ips200_printf(58 ,48 , "%d  ", enc_tar[1]);
+    ips200_printf(58 ,64 , "%d  ", enc_tar[2]);
+    ips200_printf(58 ,96 , "%d  ", enc_cur[1]);
+    ips200_printf(58 ,112, "%d  ", enc_cur[2]);
+    ips200_printf(58 ,128, "%d  ", Motor_1_PID.Out);
+    ips200_printf(58 ,144, "%d  ", Motor_2_PID.Out);
+    
+    // 电机调试界面光标 标志位
+    // 正常的命名为Debug_Motor_PID_flag，此处进行简化
+    uint8_t Debug_M_P_f = 1;
+
+    while(1)
+    {
+        // 存储确认键被按下时Debug_M_f的值的临时变量，默认为无效值0
+        uint8_t Debug_M_P_f_temp = 0;
+        // 上/下按键是否被按下过
+        uint8_t key_pressed = 0;
+
+        /* 按键处理 */
+        if (KEY_SHORT_PRESS == key_get_state(KEY_UP))
+        {
+            key_clear_state(KEY_UP);
+            key_pressed = 1;
+            Debug_M_P_f --;
+            if (Debug_M_P_f < 1){Debug_M_P_f = 2;}
+        }
+        else if (KEY_SHORT_PRESS == key_get_state(KEY_DOWN))
+        {
+            key_clear_state(KEY_DOWN);
+            key_pressed = 1;
+            Debug_M_P_f ++;
+            if (Debug_M_P_f > 2){Debug_M_P_f = 1;}      
+        }
+        else if (KEY_SHORT_PRESS == key_get_state(KEY_CONFIRM))
+        {
+            key_clear_state(KEY_CONFIRM);
+            Debug_M_P_f_temp = Debug_M_P_f;
+        }
+        else if (KEY_SHORT_PRESS == key_get_state(KEY_BACK))
+        {
+            key_clear_state(KEY_BACK);
+
+            // 各项重置
+            PID_INC_Init(&Motor_1_PID);    
+            PID_INC_Init(&Motor_2_PID);
+            Motor_Set(1,0);
+            Motor_Set(2,0);
+            // 返回上一级界面
+            return 0;
+        }
+            
+        
+        /* 参数设置 */
+        if (Debug_M_P_f_temp == 1 || Debug_M_P_f_temp == 2)
+        {
+            ips200_show_string(0 ,32 + 16*Debug_M_P_f_temp , "=");
+            
+            // 电机手动设置
+            while(1)
+            {
+                /* 按键解析 */
+                if (KEY_SHORT_PRESS == key_get_state(KEY_UP))
+                {
+                    key_clear_state(KEY_UP);
+                    enc_tar[Debug_M_P_f] += 20;
+                    if (enc_tar[Debug_M_P_f] > 1000)enc_tar[Debug_M_P_f] = 1000;
+                    ips200_printf(58 ,32 + 16*Debug_M_P_f, "%d  ", enc_tar[Debug_M_P_f]);
+                }
+                else if (KEY_SHORT_PRESS == key_get_state(KEY_DOWN))
+                {
+                    key_clear_state(KEY_DOWN);
+                    enc_tar[Debug_M_P_f] -= 20;
+                    if (enc_tar[Debug_M_P_f] < -1000)enc_tar[Debug_M_P_f] = -1000;
+                    ips200_printf(58 ,32 + 16*Debug_M_P_f, "%d  ", enc_tar[Debug_M_P_f]);
+                }
+                else if (KEY_SHORT_PRESS == key_get_state(KEY_CONFIRM) || 
+                        KEY_SHORT_PRESS == key_get_state(KEY_BACK))
+                {
+                    key_clear_state(KEY_CONFIRM);
+                    key_clear_state(KEY_BACK);
+                    
+                    break;  // 退出修改模式
+                }
+
+                
+                /* 电机编码器读取 */
+                if (Time_Count1 > 5)// 10 * 5 ms周期
+                {
+                    Time_Count1 = 0;
+                    
+                    enc_cur[1] = ENC1_GET();
+                    enc_cur[2] = ENC2_GET();
+                    ENC1_CLEAR();
+                    ENC2_CLEAR();
+
+                    // PID计算
+                    Motor_1_PID.Actual = enc_cur[1];
+                    Motor_1_PID.Target = enc_tar[1];
+                    PID_INC_Update(&Motor_1_PID);
+                    Motor_Set(1, (int16_t)Motor_1_PID.Out);
+                    
+                    Motor_2_PID.Actual = enc_cur[2];
+                    Motor_2_PID.Target = enc_tar[2];
+                    PID_INC_Update(&Motor_2_PID);
+                    Motor_Set(2, (int16_t)Motor_2_PID.Out);
+                }
+
+
+                /* 数据显示 */
+                if (Time_Count2 > 10)// 10 * 10 ms周期
+                {
+                    Time_Count2 = 0;
+
+                    ips200_printf(58 ,96 , "%d  ", enc_cur[1]);
+                    ips200_printf(58 ,112, "%d  ", enc_cur[2]);
+                    ips200_printf(58 ,128, "%d  ", Motor_1_PID.Out);
+                    ips200_printf(58 ,144, "%d  ", Motor_2_PID.Out);
+                }
+            }
+        }
+            
+            
+        /* 电机编码器读取 */
+        if (Time_Count1 > 5)// 10 * 5 ms周期
+        {
+            Time_Count1 = 0;
+            
+            enc_cur[1] = ENC1_GET();
+            enc_cur[2] = ENC2_GET();
+            ENC1_CLEAR();
+            ENC2_CLEAR();
+
+            // PID计算
+            Motor_1_PID.Actual = enc_cur[1];
+            Motor_1_PID.Target = enc_tar[1];
+            PID_INC_Update(&Motor_1_PID);
+            Motor_Set(1, (int16_t)Motor_1_PID.Out);
+            
+            Motor_2_PID.Actual = enc_cur[2];
+            Motor_2_PID.Target = enc_tar[2];
+            PID_INC_Update(&Motor_2_PID);
+            Motor_Set(2, (int16_t)Motor_2_PID.Out);
+        }
+
+
+        /* 数据显示 */
+        if (Time_Count2 > 10)// 10 * 10 ms周期
+        {
+            Time_Count2 = 0;
+
+            ips200_printf(58 ,96 , "%d  ", enc_cur[1]);
+            ips200_printf(58 ,112, "%d  ", enc_cur[2]);
+            ips200_printf(58 ,128, "%d  ", Motor_1_PID.Out);
+            ips200_printf(58 ,144, "%d  ", Motor_2_PID.Out);
+        }
+            
+            
+        /* 光标更新 */
+        if (key_pressed)
+        {
+            // 清理光标
+            ips200_show_string(0 ,48 , " ");
+            ips200_show_string(0 ,64 , " ");
+            // 显示光标
+            ips200_show_string(0 ,32 + 16*Debug_M_P_f  , ">");
         }
     }
 }
