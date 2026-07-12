@@ -20,7 +20,7 @@ void Peripheral_Init(void)
 	// 按键初始化(10ms扫描周期)
     key_init(10);
 
-    // CH-04 蓝牙串口初始化
+    // CH-04蓝牙 / 串口初始化
     uart_init(UART_6, 9600, UART6_TX_C6, UART6_RX_C7);
     uart_printf(UART_6, "CH-04 ready, baud=%d\r\n", 9600);
 	
@@ -29,9 +29,11 @@ void Peripheral_Init(void)
 	
 	// 编码器1: B4 + B5 → TIM3
 	encoder_quad_init(ENCODER_1, ENC_1_P_CH1, ENC_1_P_CH2);
-
 	// 编码器2: B6 + B7 → TIM4
 	encoder_quad_init(ENCODER_2, ENC_2_P_CH1, ENC_2_P_CH2);
+
+    // 1. 初始化总钻风摄像头（自动检测 UART/SCCB 通信方式，配置内部寄存器）
+    uint8 ret = mt9v03x_init();
 }
 
 
@@ -82,7 +84,7 @@ void Menu_Show(void)
 		uint8_t key_pressed = 0;
 
         
-        /* 按键处理*/
+        /* 按键处理 */
         if (KEY_SHORT_PRESS == key_get_state(KEY_UP))
         {
             key_clear_state(KEY_UP);
@@ -105,7 +107,7 @@ void Menu_Show(void)
         key_clear_state(KEY_BACK); // 仅消费标志位
 
 
-        /* 模式跳转*/
+        /* 模式跳转 */
         if (menu_flag_temp == 1)
         {
             ips200_clear();
@@ -128,7 +130,7 @@ void Menu_Show(void)
         }
 
 
-        /* 显示更新*/
+        /* 显示更新 */
         if (key_pressed)
         {
 			// 清理光标

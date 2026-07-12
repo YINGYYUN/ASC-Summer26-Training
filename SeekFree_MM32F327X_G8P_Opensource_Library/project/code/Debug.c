@@ -18,14 +18,15 @@ void Debug_Page_Menu_UI(uint8_t Page)
 		case 1:
 			ips200_show_string(8  ,0  , "[Debug]");
 			ips200_show_string(0  ,16 , "==============================");
-			ips200_show_string(10 ,32 , "UART");
-			ips200_show_string(10 ,48 , "Motor");
+			ips200_show_string(10 ,32 , "UART");    // CH-04蓝牙 / 串口
+			ips200_show_string(10 ,48 , "Motor");   // 电机
+            ips200_show_string(10 ,64 , "MT9V03x"); // 总钻风摄像头
 		
 			break;
 	}
 }
 
-// [三级界面]UART调试界面 (串口/蓝牙)
+// [三级界面]UART调试界面       CH-04蓝牙 / 串口
 void Debug_UART_UI(void)
 {
     ips200_show_string(8  ,0  , "[DEBUG]-UART");
@@ -37,7 +38,7 @@ void Debug_UART_UI(void)
     // RX溢出字符会切割到这一行显示
 }
 
-// [三级界面]Motor调试界面 驱动+编码器
+// [三级界面]Motor调试界面      驱动+编码器
 void Debug_Motor_UI(void)
 {
     ips200_show_string(8  ,0  , "[DEBUG]-Motor");
@@ -51,6 +52,13 @@ void Debug_Motor_UI(void)
     ips200_show_string(0  ,128, "SUM 1:");
 	ips200_show_string(0  ,144, "SUM 2:");
 }
+
+// [三级界面]MT9V03x调试界面    总钻风
+void Debug_MT9V03x_UI(void)
+{
+    ips200_show_string(8  ,0  , "[DEBUG]-MT9V03x");
+    ips200_show_string(0  ,16 , "==============================");
+}
 /**********************************************************/
 /*----------------------------------------[E] 界面样式 [E]*/
 /**********************************************************/
@@ -63,6 +71,7 @@ void Debug_Motor_UI(void)
 // 相关函数提前声明
 int Debug_UART         	(void);
 int Debug_Motor         (void);
+int Debug_MT9V03x       (void);
 
 
 // [二级界面]Debug模式界面
@@ -130,6 +139,16 @@ int Debug_Page_Menu(void)
             ips200_clear();
             Debug_Page_Menu_UI(1);
             ips200_show_string(0  ,48 , ">");
+        }
+        else if (Debug_Page_flag_temp == 3)
+        {
+            ips200_clear();
+            Debug_MT9V03x();
+            
+            // 从子界面返回后
+            ips200_clear();
+            Debug_Page_Menu_UI(1);
+            ips200_show_string(0  ,64 , ">");
         }
 
         
@@ -326,7 +345,7 @@ int Debug_Motor (void)
         }
             
             
-        /* 参数设置*/
+        /* 参数设置 */
         if (Debug_M_f_temp == 1 || Debug_M_f_temp == 2)
         {
             ips200_show_string(0 ,32 + 16*Debug_M_f_temp , "=");
@@ -334,7 +353,7 @@ int Debug_Motor (void)
             // 电机手动设置
             while(1)
             {
-                /* 按键解析*/
+                /* 按键解析 */
                 if (KEY_SHORT_PRESS == key_get_state(KEY_UP))
                 {
                     key_clear_state(KEY_UP);
@@ -360,7 +379,7 @@ int Debug_Motor (void)
                     break;  // 退出修改模式
                 }
                 
-                // 电机编码器读取
+                /* 电机编码器读取 */
                 if (Time_Count2 > 10)// 10 * 10 ms周期
                 {
                     Time_Count2 = 0;
@@ -380,7 +399,7 @@ int Debug_Motor (void)
         }
             
             
-        // 电机编码器读取
+        /* 电机编码器读取 */
         if (Time_Count2 > 10)// 10 * 10 ms周期
         {
             Time_Count2 = 0;
@@ -398,7 +417,7 @@ int Debug_Motor (void)
         }
             
             
-        /* 显示更新*/
+        /* 显示更新 */
         if (key_pressed)
         {
             // 清理光标
@@ -410,6 +429,49 @@ int Debug_Motor (void)
     }
 }
 
+
+//  #   #  #####  #####  #   #  #####  #####  #   #  
+//  ## ##    #    #   #  #   #  #   #      #   # #   
+//  # # #    #    #####  #   #  #   #  #####    #    
+//  #   #    #        #   # #   #   #      #   # #   
+//  #   #    #    #####    #    #####  #####  #   #  
+//
+// [三级界面]总钻风调试
+int Debug_MT9V03x (void)
+{
+    // 大概率会被覆盖显示,作为保留项目
+    Debug_MT9V03x_UI();
+
+    while(1)
+    {
+        /* 按键处理 */
+        key_clear_state(KEY_UP); // 仅消费标志位
+        key_clear_state(KEY_DOWN); // 仅消费标志位
+        key_clear_state(KEY_CONFIRM); // 仅消费标志位
+        if (KEY_SHORT_PRESS == key_get_state(KEY_BACK))
+        {
+            key_clear_state(KEY_BACK);
+
+            ips200_clear();
+            // 返回上一级界面
+            return 0;
+        }
+
+
+        /* 总钻风显示 */
+        if (Time_Count2 > 10)// 10 * 10 ms周期
+        {
+            Time_Count2 = 0;
+
+            // 检查新帧
+            if(mt9v03x_finish_flag)                              
+            {
+                mt9v03x_finish_flag = 0;
+                ips200_displayimage03x(mt9v03x_image[0], MT9V03X_W, MT9V03X_H);
+            }
+        }
+    }
+}
 /**********************************************************/
 /*----------------------------------------[E] 调试逻辑 [E]*/
 /**********************************************************/
