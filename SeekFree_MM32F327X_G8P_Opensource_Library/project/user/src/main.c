@@ -40,7 +40,7 @@ int main(void)
     clock_init(SYSTEM_CLOCK_120M);                                              // 初始化芯片时钟 工作频率为 120MHz
     debug_init();                                                               // 初始化默认 Debug UART
 
-    Peripheral_Init();															// 初始化外设，自行配置
+    Peripheral_Init();                                                          // 初始化外设，自行配置
 	
 	// 初始化定时器，调用代码请查看"isr.c"文件
     pit_ms_init(TIM6_PIT, 10);

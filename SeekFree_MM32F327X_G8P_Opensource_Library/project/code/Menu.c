@@ -4,6 +4,18 @@
 
 
 #include "zf_common_headfile.h"
+#include "zf_device_ips200pro.h"
+
+// ---- Pro 组件 ID ----
+static uint16 lb_menu_ui;
+static uint8  ui_created = 0;            // 组件是否已创建
+       uint16 page_main;                 // 主菜单页面
+       uint16 page_debug;                // Debug 页面
+       uint16 page_uart;                 // UART 调试页面
+       uint16 page_motor;                // Motor 调试页面
+       uint16 page_motor_pid;            // Motor_PID 调试页面
+       uint16 page_mt9v03x;              // MT9V03x 图像页面
+       uint16 page_mt9_track;            // MT9-Track 赛道识别页面
 
 //----------------------------------------------------------
 // 函数简介     外设初始化
@@ -12,11 +24,15 @@
 //----------------------------------------------------------
 void Peripheral_Init(void)
 {
-    // IPS200 初始化 (SPI 接口串口两寸屏)
-	ips200_init(IPS200_TYPE_SPI);
-    ips200_set_color(RGB565_YELLOW, RGB565_BLACK);       // 字，背景
-    ips200_clear();                                     // 清屏为黑色
-	
+    // IPS200 Pro 初始化
+    page_main      = ips200pro_init("", IPS200PRO_TITLE_TOP, 0);
+    page_debug     = ips200pro_page_create("Debug");
+    page_uart      = ips200pro_page_create("UART");
+    page_motor     = ips200pro_page_create("Motor");
+    page_motor_pid = ips200pro_page_create("MotorPID");
+    page_mt9v03x   = ips200pro_page_create("MT9V03x");
+    page_mt9_track = ips200pro_page_create("Track");
+    
 	// 按键初始化(10ms扫描周期)
     key_init(10);
 
@@ -41,22 +57,29 @@ void Peripheral_Init(void)
 /*[S] 界面样式 [S]----------------------------------------*/
 /**********************************************************/
 
-// [一级界面]主菜单界面
-void Menu_UI(uint8_t Page)
+// [一级界面]主菜单界面 — IPS200 Pro 版（光标嵌入文字）
+static void Menu_UI_Pro(uint8_t flag)
 {
-	switch(Page)
-	{		
-		// 第一页
-		case 1:
-		{
-            ips200_show_string(8  ,0  , "[Menu]");
-            ips200_show_string(0  ,16 , "==============================");
-            ips200_show_string(10 ,32 , "Process");
-            ips200_show_string(10 ,48 , "Debug");
+    ips200pro_page_switch(page_main, PAGE_ANIM_OFF);
 
-			break;
-		}
-	}
+    if (!ui_created)
+    {
+        lb_menu_ui = ips200pro_label_create(0, 0, 240, 64);
+        ips200pro_set_font(lb_menu_ui, FONT_SIZE_14);
+        ips200pro_label_mode(lb_menu_ui, LABEL_CLIP);
+        ui_created = 1;
+    }
+
+    // 手动拼接字符串，避免 printf 多行兼容问题
+    char buf[64];
+    snprintf(buf, sizeof(buf),
+        "  [Menu]\n"
+        "====================\n"
+        "%c Process\n"
+        "%c Debug",
+        flag == 1 ? '>' : ' ',
+        flag == 2 ? '>' : ' ');
+    ips200pro_label_show_string(lb_menu_ui, buf);
 }
 /**********************************************************/
 /*----------------------------------------[E] 界面样式 [E]*/
@@ -72,9 +95,7 @@ uint8_t menu_flag = 1;
 
 void Menu_Show(void)
 {
-    ips200_clear();
-    Menu_UI(1);
-    ips200_show_string(0  ,32 , ">");
+    Menu_UI_Pro(1);
 
     while(1)
     {
@@ -110,37 +131,22 @@ void Menu_Show(void)
         /* 模式跳转 */
         if (menu_flag_temp == 1)
         {
-            ips200_clear();
-
-
-            // 从Process模式返回，显示主菜单界面
-            ips200_clear();
-            Menu_UI(1);
-            ips200_show_string(0  ,32 , ">");
+            // Process 模式（暂无，直接重建 UI）
+            Menu_UI_Pro(1);
         }
         else if (menu_flag_temp == 2)
         {
-            ips200_clear();
             Debug_Page_Menu();
 
-            // 从Debug模式返回，显示主菜单界面
-            ips200_clear();
-            Menu_UI(1);
-            ips200_show_string(0  ,48 , ">");
+            // 从Debug模式返回，重建主菜单界面
+            Menu_UI_Pro(2);
         }
 
 
         /* 光标更新 */
         if (key_pressed)
         {
-			// 清理光标
-			ips200_show_string(0  ,32 , " ");
-			ips200_show_string(0  ,48 , " ");
-			ips200_show_string(0  ,64 , " ");
-			ips200_show_string(0  ,80 , " ");
-			ips200_show_string(0  ,96 , " ");
-			// 显示光标
-			ips200_show_string(0  ,16 + 16*menu_flag , ">");
+            Menu_UI_Pro(menu_flag);
         }
     }
 }
