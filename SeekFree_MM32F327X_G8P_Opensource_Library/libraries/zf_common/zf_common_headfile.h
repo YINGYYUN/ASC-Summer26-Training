@@ -138,6 +138,7 @@ extern uint16 Time_Count2;
 #include "drv8701_motor.h"
 #include "define.h"
 #include "pid.h"
+#include "TrackRecognition.h"
 //===================================================用户自定义文件===================================================
 
 #endif

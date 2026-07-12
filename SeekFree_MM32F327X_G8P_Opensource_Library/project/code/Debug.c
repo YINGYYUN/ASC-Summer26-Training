@@ -4,6 +4,7 @@
 
 
 #include "zf_common_headfile.h"
+#include "TrackRecognition.h"
 
 /**********************************************************/
 /*[S] 界面样式 [S]----------------------------------------*/
@@ -18,16 +19,18 @@ void Debug_Page_Menu_UI(uint8_t Page)
 		case 1:
 			ips200_show_string(8  ,0  , "[Debug]");
 			ips200_show_string(0  ,16 , "==============================");
-			ips200_show_string(10 ,32 , "UART");    // CH-04蓝牙 / 串口
-			ips200_show_string(10 ,48 , "Motor");   // 电机
-			ips200_show_string(10 ,64 , "Motor_PID");   // 电机PID
-            ips200_show_string(10 ,80 , "MT9V03x"); // 总钻风摄像头
+			ips200_show_string(10 ,32 , "UART");            // CH-04蓝牙 / 串口
+			ips200_show_string(10 ,48 , "Motor");           // 驱动+编码器
+			ips200_show_string(10 ,64 , "Motor_PID");       // 速度环
+            ips200_show_string(10 ,80 , "MT9V03x");         // 总钻风图像显示
+            ips200_show_string(10 ,96 , "MT9-Track");       // 赛道识别
 		
 			break;
 	}
 }
 
-// [三级界面]UART调试界面       CH-04蓝牙 / 串口
+// [三级界面]UART调试界面       
+// CH-04蓝牙 / 串口
 void Debug_UART_UI(void)
 {
     ips200_show_string(8  ,0  , "[DEBUG]-UART");
@@ -39,7 +42,8 @@ void Debug_UART_UI(void)
     // RX溢出字符会切割到这一行显示
 }
 
-// [三级界面]Motor调试界面      驱动+编码器
+// [三级界面]Motor调试界面      
+// 驱动+编码器
 void Debug_Motor_UI(void)
 {
     ips200_show_string(8  ,0  , "[DEBUG]-Motor");
@@ -55,6 +59,7 @@ void Debug_Motor_UI(void)
 }
 
 // [三级界面]Motor_PID调试界面   
+// 速度环
 void Debug_Motor_PID_UI(void)
 {
     ips200_show_string(8  ,0  , "[DEBUG]-Motor-PID");
@@ -69,10 +74,19 @@ void Debug_Motor_PID_UI(void)
 	ips200_show_string(10 ,144, "PWM 2:");
 }
 
-// [三级界面]MT9V03x调试界面    总钻风
+// [三级界面]MT9V03x调试界面    
+// 总钻风图像显示
 void Debug_MT9V03x_UI(void)
 {
     ips200_show_string(8  ,0  , "[DEBUG]-MT9V03x");
+    ips200_show_string(0  ,16 , "==============================");
+}
+
+// [三级界面]MT9-Track调试界面    
+// 赛道识别
+void Debug_MT9_Track_UI(void)
+{
+    ips200_show_string(8  ,0  , "[DEBUG]-MT9-Track");
     ips200_show_string(0  ,16 , "==============================");
 }
 /**********************************************************/
@@ -87,8 +101,9 @@ void Debug_MT9V03x_UI(void)
 // 相关函数提前声明
 int Debug_UART         	(void);
 int Debug_Motor         (void);
-int Debug_Motor_PID      (void);
+int Debug_Motor_PID     (void);
 int Debug_MT9V03x       (void);
+int Debug_MT9_Track     (void);
 
 
 // [二级界面]Debug模式界面
@@ -114,14 +129,14 @@ int Debug_Page_Menu(void)
             key_clear_state(KEY_UP);
             key_pressed = 1;
             Debug_Page_flag --;
-            if (Debug_Page_flag < 1)Debug_Page_flag = 4;
+            if (Debug_Page_flag < 1)Debug_Page_flag = 5;
         }
         else if (KEY_SHORT_PRESS == key_get_state(KEY_DOWN))
         {
             key_clear_state(KEY_DOWN); 
             key_pressed = 1;
             Debug_Page_flag ++;
-            if (Debug_Page_flag > 4)Debug_Page_flag = 1;
+            if (Debug_Page_flag > 5)Debug_Page_flag = 1;
         }
         else if (KEY_SHORT_PRESS == key_get_state(KEY_CONFIRM))
         {
@@ -176,6 +191,16 @@ int Debug_Page_Menu(void)
             ips200_clear();
             Debug_Page_Menu_UI(1);
             ips200_show_string(0  ,80 , ">");
+        }
+        else if (Debug_Page_flag_temp == 5)
+        {
+            ips200_clear();
+            Debug_MT9_Track();
+            
+            // 从子界面返回后
+            ips200_clear();
+            Debug_Page_Menu_UI(1);
+            ips200_show_string(0  ,96 , ">");
         }
 
         
@@ -708,6 +733,62 @@ int Debug_MT9V03x (void)
         }
     }
 }
+
+
+//  #   #  #####  #####         #####  ####    ###    ####  #   #  
+//  ## ##    #    #   #           #    #   #  #   #  #      #  #   
+//  # # #    #    #####   ###     #    ####   #####  #      ###    
+//  #   #    #        #           #    #  #   #   #  #      #  #   
+//  #   #    #    #####           #    #   #  #   #   ####  #   #  
+//
+// [三级界面]赛道识别调试
+int Debug_MT9_Track     (void)
+{
+    // 大概率会被覆盖显示,作为保留项目
+    Debug_MT9_Track_UI();
+
+    while(1)
+    {
+        /* 按键处理 */
+        key_clear_state(KEY_UP); // 仅消费标志位
+        key_clear_state(KEY_DOWN); // 仅消费标志位
+        key_clear_state(KEY_CONFIRM); // 仅消费标志位
+        if (KEY_SHORT_PRESS == key_get_state(KEY_BACK))
+        {
+            key_clear_state(KEY_BACK);
+
+            ips200_clear();
+            // 返回上一级界面
+            return 0;
+        }
+
+        
+        if (Time_Count1 > 10)// 10 * 10 ms周期
+        {
+            Time_Count1 = 0;
+        }
+
+        
+        if (Time_Count2 > 10)// 10 * 10 ms周期
+        {
+            Time_Count2 = 0;
+
+            // ---- 图像数据读取 + 赛道识别 ----
+            if(mt9v03x_finish_flag)
+            {
+                mt9v03x_finish_flag = 0;
+
+                // 执行赛道识别
+                TrackRecognition_Process();
+
+                // 在原图上叠加赛道中线供调试
+                TrackRecognition_DrawOverlay();
+                ips200_displayimage03x(mt9v03x_image[0], MT9V03X_W, MT9V03X_H);
+            }
+        }
+    }
+}
+
 /**********************************************************/
 /*----------------------------------------[E] 调试逻辑 [E]*/
 /**********************************************************/

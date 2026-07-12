@@ -454,6 +454,16 @@
               <FileType>5</FileType>
               <FilePath>..\code\pid.h</FilePath>
             </File>
+            <File>
+              <FileName>TrackRecognition.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\code\TrackRecognition.c</FilePath>
+            </File>
+            <File>
+              <FileName>TrackRecognition.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\code\TrackRecognition.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
