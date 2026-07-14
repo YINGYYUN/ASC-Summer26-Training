@@ -464,6 +464,16 @@
               <FileType>5</FileType>
               <FilePath>..\code\TrackRecognition.h</FilePath>
             </File>
+            <File>
+              <FileName>common_menu.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\code\common_menu.c</FilePath>
+            </File>
+            <File>
+              <FileName>common_menu.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\code\common_menu.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

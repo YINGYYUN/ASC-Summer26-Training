@@ -29,6 +29,7 @@ typedef struct Menu_Item {
 
     uint8_t sons;                       // 记录子节点数量
     uint8_t No;                         // 记录当前是父节点的第几个成员
+    bool select;                        // 是否被选中的标志位(参数修改的功能)
 
     struct Menu_Item *father;           // 父节点
     struct Menu_Item *first_son;        // 第一个子节点
@@ -36,8 +37,16 @@ typedef struct Menu_Item {
     struct Menu_Item *last_brother;     // 上一个兄弟节点
 }Menu_Item;
 
-void Create_Menu_Folder(Menu_Item *father, Menu_Item *me, const char name[]);
-void Create_Menu_Number(Menu_Item *father, Menu_Item *me, const char name[], void *data, MENU_KIND kind);
+void        Create_Menu_Folder          (Menu_Item *father, Menu_Item *me, const char name[]);
+void        Create_Menu_Number          (Menu_Item *father, Menu_Item *me, const char name[], void *data, MENU_KIND kind);
+Menu_Item*  DynamicCreate_Menu_Folder   (Menu_Item *father, const char name[]);
+void        DynamicCreate_Menu_Number   (Menu_Item *father, const char name[], void *data, MENU_KIND kind);
+void        menu_init                   (void);
+void        menu_show                   (void);
+void        key_1                       (void);
+void        key_2                       (void);
+void        key_3                       (void);
+void        key_quit                    (void);
 
 
 #endif
