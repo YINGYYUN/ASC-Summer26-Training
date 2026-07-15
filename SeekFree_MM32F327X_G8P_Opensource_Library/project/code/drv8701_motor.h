@@ -9,11 +9,11 @@ DRV8701 电机驱动
 
 #include "zf_common_headfile.h"
 
-// 引脚配置
-#define MOTOR_2_DIR_PIN             ( A2 )			
-#define MOTOR_2_PWM_CHANNEL         TIM5_PWM_CH4_A3		
+// 引脚配置	
 #define MOTOR_1_DIR_PIN             ( A0 )
 #define MOTOR_1_PWM_CHANNEL         TIM5_PWM_CH2_A1
+#define MOTOR_2_DIR_PIN             ( A2 )			
+#define MOTOR_2_PWM_CHANNEL         TIM5_PWM_CH4_A3	
 
 // PWM 频率 10kHz
 #define MOTOR_PWM_FREQ              ( 10000 )

@@ -14,7 +14,7 @@ static Menu_Item menu_item_arr[MENU_MAX_SIZE];
 static uint8_t menu_arr_index = 0;
 
 Menu_Item head = {
-    .name           = "MENU",
+    .name           = "PARAM_Menu",
     .data           = NULL,
     .kind           = MENU_Folder,
 
@@ -34,9 +34,9 @@ Menu_Item head = {
 Menu_Item *key;
 
 // 步进值控制
-#define SETUP_LEN               (7)
-static float SetupNumber[SETUP_LEN] = {0.001f, 0.01f, 0.1f, 1, 10, 100, 1000};
-static uint8_t SetupIndex = 3;          // 默认步进 = 1
+#define SETUP_LEN               (6)
+static float SetupNumber[SETUP_LEN] = {0.01f, 0.1f, 1, 10, 100, 1000};
+static uint8_t SetupIndex = 2;          // 默认步进 = 1
 
 
 /**********************************************************/
@@ -152,17 +152,25 @@ static void show_title(void)
     ips200_show_string(0, 0, buf);
 }
 
-// 显示步进值
+// 显示步进值(固定 7 字符宽, 避免短字符串残留旧像素)
 static void show_setup(void)
 {
-    char buf[11];
-    memset(buf, ' ', 10);
-    buf[10] = '\0';
+    char buf[8];
+    memset(buf, ' ', 7);
+    buf[7] = '\0';
 
     if (SetupNumber[SetupIndex] < 1)
-        sprintf(buf, "<%.2f>", SetupNumber[SetupIndex]);
+    {
+        // <0.00>
+        int len = sprintf(buf, "<%.2f>", SetupNumber[SetupIndex]);
+        buf[len] = ' ';     // 抹掉 sprintf 写入的 '\0', 让后面空格继续显示
+    }
     else
-        sprintf(buf, "<%.0f>", SetupNumber[SetupIndex]);
+    {
+        // <1000>
+        int len = sprintf(buf, "<%.0f>", SetupNumber[SetupIndex]);
+        buf[len] = ' ';
+    }
 
     ips200_show_string(160, 0, buf);
 }
@@ -175,7 +183,7 @@ static void show_task(void)
 
     for (int i = 0; i < h->sons; i++)
     {
-        int y = (i + 1) * 16;       // 第0行留给标题栏
+        int y = (i + 2) * 16;       // 第0行标题栏, 第1行分隔线
 
         switch (s->kind)
         {
@@ -190,9 +198,9 @@ static void show_task(void)
     }
 
     // 清空剩余行
-    for (int i = h->sons; i < 16; i++)
+    for (int i = h->sons; i < 15; i++)
     {
-        ips200_show_string(0, (i + 1) * 16, "                              ");
+        ips200_show_string(0, (i + 2) * 16, "                              ");
     }
 }
 
@@ -204,7 +212,7 @@ static void show_key(void)
 
     for (int i = 0; i < h->sons; i++)
     {
-        int y = (i + 1) * 16;
+        int y = (i + 2) * 16;
 
         if (s == key)
             ips200_show_string(0, y, ">");
@@ -222,7 +230,7 @@ static void show_data(void)
 
     for (int i = 0; i < h->sons; i++)
     {
-        int y = (i + 1) * 16;
+        int y = (i + 2) * 16;
 
         // 选中标记
         if (s->select)
@@ -275,10 +283,6 @@ static void show_data(void)
                 break;
         }
 
-        // 选中时右侧也显示标记
-        if (s->select)
-            ips200_show_string(166, y, "]");
-
         s = s->next_brother;
     }
 }
@@ -287,6 +291,7 @@ void menu_show(void)
 {
     show_title();
     show_setup();
+    ips200_show_string(0, 16, "==============================");
     show_task();
     show_key();
     show_data();

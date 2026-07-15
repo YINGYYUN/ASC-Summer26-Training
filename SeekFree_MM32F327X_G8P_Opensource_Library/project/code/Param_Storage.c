@@ -4,7 +4,7 @@
 
 #include "Param_Storage.h"
 
-// 需要引用实际 PID 结构体以完成同步
+// 需要引用实际应用参数以完成同步
 extern PID_INC_t Motor_1_PID;   // 电机1 PID (左轮)
 extern PID_INC_t Motor_2_PID;   // 电机2 PID (右轮)
 
@@ -23,7 +23,9 @@ static const float DEFAULT_PARAMS[PARAM_COUNT] = {
 float param_cache[PARAM_COUNT];
 
 
-//------------------- 内部辅助函数 -------------------
+/**********************************************************/
+/*[S] 内部函数 [S]----------------------------------------*/
+/**********************************************************/
 
 static void load_default(void)
 {
@@ -43,7 +45,7 @@ static void copy_flash_buffer_to_cache(void)
         param_cache[i] = flash_union_buffer[i].float_type;
 }
 
-// 校验参数是否合法(异常值/全零 Kp 视为无效)
+// 校验参数是否合法(异常值无效)
 static uint8_t param_cache_is_valid(void)
 {
     uint8_t kp_nonzero = 0;
@@ -54,6 +56,7 @@ static uint8_t param_cache_is_valid(void)
         if (param_cache[i] > 10000.0f || param_cache[i] < -10000.0f)
             return 0;
 
+        // kp作用明确,数值参与判定
         // 计数非零 Kp(任意一个 Kp 非零即认为有效)
         if (i == MOTOR1_KP_IDX || i == MOTOR2_KP_IDX)
         {
@@ -64,9 +67,14 @@ static uint8_t param_cache_is_valid(void)
 
     return kp_nonzero;
 }
+/**********************************************************/
+/*----------------------------------------[E] 内部函数 [E]*/
+/**********************************************************/
 
 
-//------------------- 对外函数 -------------------
+/**********************************************************/
+/*[S] 外部函数 [S]----------------------------------------*/
+/**********************************************************/
 
 // 初始化参数系统(上电调用一次)
 void Param_Init(void)
@@ -93,7 +101,7 @@ void Param_Init(void)
         flash_write_page_from_buffer(PARAM_FLASH_SECTION, PARAM_FLASH_PAGE);
     }
 
-    // 将参数推送到 PID 结构体
+    // 将参数推送到实际应用参数
     Flash_SyncTo_Param();
 }
 
@@ -110,7 +118,7 @@ void Param_Erase(void)
     flash_erase_page(PARAM_FLASH_SECTION, PARAM_FLASH_PAGE);
 }
 
-// 将缓存区值同步到实际 PID 结构体
+// 将缓存区值同步到实际应用参数
 void Flash_SyncTo_Param(void)
 {
     Motor_1_PID.Kp = MOTOR1_KP;
@@ -121,3 +129,6 @@ void Flash_SyncTo_Param(void)
     Motor_2_PID.Ki = MOTOR2_KI;
     Motor_2_PID.Kd = MOTOR2_KD;
 }
+/**********************************************************/
+/*----------------------------------------[E] 外部函数 [E]*/
+/**********************************************************/
