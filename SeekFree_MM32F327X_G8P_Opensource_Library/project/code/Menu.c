@@ -33,7 +33,10 @@ void Peripheral_Init(void)
 	encoder_quad_init(ENCODER_2, ENC_2_P_CH1, ENC_2_P_CH2);
 
     // 1. 初始化总钻风摄像头（自动检测 UART/SCCB 通信方式，配置内部寄存器）
-    // uint8 ret = mt9v03x_init();
+    uint8 ret = mt9v03x_init();
+
+    // 初始化flash参数存储
+    Param_Init();
 }
 
 

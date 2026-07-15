@@ -428,6 +428,7 @@ int Debug_Motor (void)
                 {
                     key_clear_state(KEY_CONFIRM);
                     key_clear_state(KEY_BACK);
+					ips200_show_string(0 ,32 + 16*Debug_M_f_temp , ">");
                     
                     break;  // 退出修改模式
                 }
@@ -498,14 +499,14 @@ int Debug_Motor_PID (void)
     PID_INC_Init(&Motor_1_PID);    
     PID_INC_Init(&Motor_2_PID);
 
-    // 暂时方法,有其他替代方法时，需要注意此处的直接赋值
-    Motor_1_PID.Kp = 25;
-    Motor_1_PID.Ki = 2;
-    Motor_1_PID.Kd = 8;
+    // // 暂时方法,有其他替代方法时，需要注意此处的直接赋值
+    // Motor_1_PID.Kp = 25;
+    // Motor_1_PID.Ki = 2;
+    // Motor_1_PID.Kd = 8;
 
-    Motor_2_PID.Kp = 25;
-    Motor_2_PID.Ki = 2;
-    Motor_2_PID.Kd = 8;
+    // Motor_2_PID.Kp = 25;
+    // Motor_2_PID.Ki = 2;
+    // Motor_2_PID.Kd = 8;
 
     // 编码器相关,为方便调用元素数量为3
     int16_t enc_cur[3] = {0};
@@ -601,6 +602,7 @@ int Debug_Motor_PID (void)
                 {
                     key_clear_state(KEY_CONFIRM);
                     key_clear_state(KEY_BACK);
+                    ips200_show_string(0 ,32 + 16*Debug_M_P_f_temp , ">");
                     
                     break;  // 退出修改模式
                 }
