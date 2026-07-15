@@ -44,36 +44,11 @@ int main(void)
 	
 	// 初始化定时器，调用代码请查看"isr.c"文件
     pit_ms_init(TIM6_PIT, 10);
-	
-	menu_init();
 
     while(1)
     {
-        // Menu_Show();
-		
-		
-		menu_show();
-		
-		if (KEY_SHORT_PRESS == key_get_state(KEY_UP))
-        {
-            key_clear_state(KEY_UP);
-			key_1();
-        }
-        else if (KEY_SHORT_PRESS == key_get_state(KEY_DOWN))
-        {
-            key_clear_state(KEY_DOWN); 
-			key_2();
-        }
-        else if (KEY_SHORT_PRESS == key_get_state(KEY_CONFIRM))
-        {
-            key_clear_state(KEY_CONFIRM);
-            key_3();
-        }
-        else if (KEY_SHORT_PRESS == key_get_state(KEY_BACK))    
-        {
-			key_clear_state(KEY_BACK);
-			key_quit();
-        }
+         Menu_Show();
+
 
     }
 }
