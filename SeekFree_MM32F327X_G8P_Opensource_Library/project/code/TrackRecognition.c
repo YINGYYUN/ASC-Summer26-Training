@@ -357,8 +357,9 @@ void TrackRecognition_Process(void)
 }
 
 // ============================================================
-// 在原图上叠加绘制赛道边界和中线（供调试显示）
-// 左边界红色、右边界蓝色、中线绿色（用不同灰度值模拟）
+// 在屏幕上叠加绘制赛道边界和中线（供调试显示）
+// 左边界红色、右边界蓝色、中线绿色
+// 注意：此函数必须在 ips200_displayimage03x 之后调用
 // ============================================================
 void TrackRecognition_DrawOverlay(void)
 {
@@ -368,23 +369,25 @@ void TrackRecognition_DrawOverlay(void)
         int16 right = g_track_result.right_boundary[row];
         int16 center = g_track_result.center_line[row];
 
-        // 画出左右边界标记点（用灰度值变化模拟颜色：较暗=边界标记）
+        // 画左边界（红色，2像素宽）
         if (left >= 0 && left < IMG_W)
         {
-            mt9v03x_image[row][left] = 0;       // 黑色标记左边界
-            if (left + 1 < IMG_W) mt9v03x_image[row][left + 1] = 0;
-        }
-        if (right >= 0 && right < IMG_W)
-        {
-            mt9v03x_image[row][right] = 0;      // 黑色标记右边界
-            if (right + 1 < IMG_W) mt9v03x_image[row][right + 1] = 0;
+            ips200_draw_point(left,     row, RGB565_RED);
+            ips200_draw_point(left + 1, row, RGB565_RED);
         }
 
-        // 画出中线（用白色标记）
+        // 画右边界（蓝色，2像素宽）
+        if (right >= 0 && right < IMG_W)
+        {
+            ips200_draw_point(right,     row, RGB565_BLUE);
+            ips200_draw_point(right + 1, row, RGB565_BLUE);
+        }
+
+        // 画中线（绿色，仅左右边界都有效时）
         if (center >= 0 && center < IMG_W
             && left >= 0 && right >= 0)
         {
-            mt9v03x_image[row][center] = 255;   // 白色标记中线
+            ips200_draw_point(center, row, RGB565_GREEN);
         }
     }
 }

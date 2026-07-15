@@ -783,9 +783,9 @@ int Debug_MT9_Track     (void)
                 // 执行赛道识别
                 TrackRecognition_Process();
 
-                // 在原图上叠加赛道中线供调试
-                TrackRecognition_DrawOverlay();
+                // 显示灰度图像，然后在屏上叠加彩色赛道边界/中线
                 ips200_displayimage03x(mt9v03x_image[0], MT9V03X_W, MT9V03X_H);
+                TrackRecognition_DrawOverlay();
             }
         }
     }
