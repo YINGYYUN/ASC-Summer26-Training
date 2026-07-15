@@ -19,7 +19,7 @@
 #define ENC1_GET()              encoder_get_count(ENCODER_1)
 #define ENC1_CLEAR()            encoder_clear_count(ENCODER_1)
 
-#define ENC2_GET()              encoder_get_count(ENCODER_2)
+#define ENC2_GET()              (-encoder_get_count(ENCODER_2))
 #define ENC2_CLEAR()            encoder_clear_count(ENCODER_2)
 
 #endif

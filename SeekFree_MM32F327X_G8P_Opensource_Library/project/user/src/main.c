@@ -47,7 +47,9 @@ int main(void)
 
     while(1)
     {
-        Menu_Show();
+         Menu_Show();
+
+
     }
 }
 

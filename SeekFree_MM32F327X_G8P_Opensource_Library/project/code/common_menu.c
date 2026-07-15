@@ -1,0 +1,660 @@
+/*******************************************************************************
+链式通用菜单框架
+参考:【手把手教菜单_框架搭建】 https://www.bilibili.com/video/BV1LCh9zrEMp/?share_source=copy_web&vd_source=befff269c2e0ef1583e2528659770521
+*******************************************************************************/
+
+
+#include "zf_common_headfile.h"
+
+
+// 静态内存池(用于分配动态创建的菜单)
+#define MENU_MAX_SIZE           (64)
+
+static Menu_Item menu_item_arr[MENU_MAX_SIZE];
+static uint8_t menu_arr_index = 0;
+
+Menu_Item head = {
+    .name           = "MENU",
+    .data           = NULL,
+    .kind           = MENU_Folder,
+
+    .sons           = 0,
+    .No             = 0,
+    .select         = false,
+
+    .isLimit        = false,
+    .limit_min      = 0,
+    .limit_max      = 0,
+
+    .father         = NULL,
+    .first_son      = NULL,
+    .next_brother   = NULL,
+    .last_brother   = NULL,
+};
+Menu_Item *key;
+
+// 步进值控制
+#define SETUP_LEN               (7)
+static float SetupNumber[SETUP_LEN] = {0.001f, 0.01f, 0.1f, 1, 10, 100, 1000};
+static uint8_t SetupIndex = 3;          // 默认步进 = 1
+
+
+/**********************************************************/
+/*[S] 节点创建函数 [S]------------------------------------*/
+/**********************************************************/
+
+// 内部通用创建函数
+static void __create_menu_item(Menu_Item *father, Menu_Item *me, const char name[], void *data, MENU_KIND kind, bool isLimit, float limit_min, float limit_max)
+{
+    if (father->kind != MENU_Folder) return;
+
+    me->name = name;
+    me->data = data;
+    me->kind = kind;
+
+    me->sons = 0;
+    me->select = false;
+
+    me->isLimit = isLimit;
+    me->limit_min = limit_min;
+    me->limit_max = limit_max;
+
+    me->father = father;
+    me->first_son = NULL;       // 第一个子节点先设为空
+    me->next_brother = NULL;
+    me->last_brother = NULL;
+
+    // 开始判定连接
+    if (father->sons == 0)
+    {
+        father->first_son = me;
+    }
+    else
+    {
+        Menu_Item *p = father->first_son;
+        while(p->next_brother != NULL)
+            p = p->next_brother;
+        p->next_brother = me;
+        me->last_brother = p;
+    }
+    me->No = father->sons;
+    father->sons++;
+}
+
+// 创建文件夹
+void Create_Menu_Folder(Menu_Item *father, Menu_Item *me, const char name[])
+{
+    __create_menu_item(father, me, name, NULL, MENU_Folder, false, 0, 0);
+}
+
+// 创建文件
+void Create_Menu_Number(Menu_Item *father, Menu_Item *me, const char name[], void *data, MENU_KIND kind)
+{
+    __create_menu_item(father, me, name, data, kind, false, 0, 0);
+}
+
+// 创建带限幅的文件
+void Create_Menu_LimitNumber(Menu_Item *father, Menu_Item *me, const char name[], void *data, MENU_KIND kind, float limit_min, float limit_max)
+{
+    __create_menu_item(father, me, name, data, kind, true, limit_min, limit_max);
+}
+
+// 动态创建文件夹(返回指针, 用于继续添加子节点)
+Menu_Item* DynamicCreate_Menu_Folder(Menu_Item *father, const char name[])
+{
+    if (menu_arr_index >= MENU_MAX_SIZE) return NULL;
+    // 分配内存池
+    Menu_Item *me = &menu_item_arr[menu_arr_index++];
+    Create_Menu_Folder(father, me, name);
+
+    return me;
+}
+
+// 动态创建文件
+void DynamicCreate_Menu_Number(Menu_Item *father, const char name[], void *data, MENU_KIND kind)
+{
+    if (menu_arr_index >= MENU_MAX_SIZE) return;
+    // 分配内存池
+    Menu_Item *me = &menu_item_arr[menu_arr_index++];
+    Create_Menu_Number(father, me, name, data, kind);
+}
+
+// 动态创建带限幅的文件
+void DynamicCreate_Menu_LimitNumber(Menu_Item *father, const char name[], void *data, MENU_KIND kind, float limit_min, float limit_max)
+{
+    if (menu_arr_index >= MENU_MAX_SIZE) return;
+    // 分配内存池
+    Menu_Item *me = &menu_item_arr[menu_arr_index++];
+    Create_Menu_LimitNumber(father, me, name, data, kind, limit_min, limit_max);
+}
+/**********************************************************/
+/*------------------------------------[E] 节点创建函数 [E]*/
+/**********************************************************/
+
+
+/**********************************************************/
+/*[S] 显示调用函数 [S]------------------------------------*/
+/**********************************************************/
+
+// 显示标题栏(当前路径)
+static void show_title(void)
+{
+    char buf[31];
+    // 填充空格底色
+    memset(buf, ' ', 30);
+    buf[30] = '\0';
+
+    // 左侧: 父节点名称 + "/"
+    int len = sprintf(buf, "%s/", key->father->name);
+    buf[len] = ' ';
+    buf[20] = '\0';     // 截断, 给右侧步进值留空间
+
+    ips200_show_string(0, 0, buf);
+}
+
+// 显示步进值
+static void show_setup(void)
+{
+    char buf[11];
+    memset(buf, ' ', 10);
+    buf[10] = '\0';
+
+    if (SetupNumber[SetupIndex] < 1)
+        sprintf(buf, "<%.2f>", SetupNumber[SetupIndex]);
+    else
+        sprintf(buf, "<%.0f>", SetupNumber[SetupIndex]);
+
+    ips200_show_string(160, 0, buf);
+}
+
+// 显示菜单项名称
+static void show_task(void)
+{
+    Menu_Item *h = key->father;
+    Menu_Item *s = h->first_son;
+
+    for (int i = 0; i < h->sons; i++)
+    {
+        int y = (i + 1) * 16;       // 第0行留给标题栏
+
+        switch (s->kind)
+        {
+            case MENU_Folder:
+                ips200_printf(10, y, "%s[%d]", s->name, s->sons);
+                break;
+            default:
+                ips200_show_string(10, y, s->name);
+                break;
+        }
+        s = s->next_brother;
+    }
+
+    // 清空剩余行
+    for (int i = h->sons; i < 16; i++)
+    {
+        ips200_show_string(0, (i + 1) * 16, "                              ");
+    }
+}
+
+// 显示光标(当前位置指示)
+static void show_key(void)
+{
+    Menu_Item *h = key->father;
+    Menu_Item *s = h->first_son;
+
+    for (int i = 0; i < h->sons; i++)
+    {
+        int y = (i + 1) * 16;
+
+        if (s == key)
+            ips200_show_string(0, y, ">");
+        else
+            ips200_show_string(0, y, " ");
+        s = s->next_brother;
+    }
+}
+
+// 显示存储的参数
+static void show_data(void)
+{
+    Menu_Item *h = key->father;
+    Menu_Item *s = h->first_son;
+
+    for (int i = 0; i < h->sons; i++)
+    {
+        int y = (i + 1) * 16;
+
+        // 选中标记
+        if (s->select)
+            ips200_show_string(142, y, "[");
+        else
+            ips200_show_string(142, y, " ");
+
+        switch (s->kind)
+        {
+            case MENU_Folder:
+                // 文件夹不显示数据
+                break;
+
+            case int32_Box:
+                ips200_printf(150, y, "%05d", *(int32_t *)s->data);
+                break;
+
+            case uint32_Box:
+                ips200_printf(150, y, "%05u", *(uint32_t *)s->data);
+                break;
+
+            case int16_Box:
+                ips200_printf(150, y, "%05d", *(int16_t *)s->data);
+                break;
+
+            case uint16_Box:
+                ips200_printf(150, y, "%05u", *(uint16_t *)s->data);
+                break;
+
+            case int8_Box:
+                ips200_printf(150, y, "%05d", *(int8_t *)s->data);
+                break;
+
+            case uint8_Box:
+                ips200_printf(150, y, "%05u", *(uint8_t *)s->data);
+                break;
+
+            case float_Box:
+                ips200_printf(150, y, "%3.2f", *(float *)s->data);
+                break;
+
+            case bool_Box:
+                if (*(bool *)s->data == true)
+                    ips200_printf(150, y, "Y");
+                else
+                    ips200_printf(150, y, "N");
+                break;
+
+            default:
+                break;
+        }
+
+        // 选中时右侧也显示标记
+        if (s->select)
+            ips200_show_string(166, y, "]");
+
+        s = s->next_brother;
+    }
+}
+
+void menu_show(void)
+{
+    show_title();
+    show_setup();
+    show_task();
+    show_key();
+    show_data();
+}
+/**********************************************************/
+/*------------------------------------[E] 显示调用函数 [E]*/
+/**********************************************************/
+
+
+/**********************************************************/
+/*[S] 按键一次封装 [S]------------------------------------*/
+/**********************************************************/
+
+// 光标上移
+static void key_up(void)
+{
+    if (key->last_brother != NULL)
+        key = key->last_brother;
+}
+
+// 光标下移
+static void key_down(void)
+{
+    if (key->next_brother != NULL)
+        key = key->next_brother;
+}
+
+// 进入菜单
+static void key_enter(void)
+{
+    if (key->sons > 0)
+    {
+        key = key->first_son;
+        ips200_clear();
+    }
+}
+
+// 选中/取消选中
+static void key_select(void)
+{
+    if (key->kind != MENU_Folder && key->kind != bool_Box)
+        key->select = !key->select;
+}
+
+// 切换 bool 值
+static void key_toggle(void)
+{
+    if (key->kind == bool_Box)
+        *(bool *)key->data = !*(bool *)key->data;
+}
+
+// 步进值循环切换(加)
+static void setup_ctrl_plus(void)
+{
+    SetupIndex = (SetupIndex + 1) % SETUP_LEN;
+}
+
+// 步进值循环切换(减)
+static void setup_ctrl_sub(void)
+{
+    SetupIndex = (SetupIndex - 1 + SETUP_LEN) % SETUP_LEN;
+}
+
+// 参数加
+static void key_plus(void)
+{
+    float step = SetupNumber[SetupIndex];
+
+    switch (key->kind)
+    {
+        case int32_Box:
+        {
+            int32_t val = *(int32_t *)key->data + (int32_t)step;
+            if (key->isLimit && val > (int32_t)key->limit_max)
+                val = (int32_t)key->limit_max;
+            *(int32_t *)key->data = val;
+            break;
+        }
+        case uint32_Box:
+        {
+            uint32_t val = *(uint32_t *)key->data + (uint32_t)step;
+            if (key->isLimit && val > (uint32_t)key->limit_max)
+                val = (uint32_t)key->limit_max;
+            *(uint32_t *)key->data = val;
+            break;
+        }
+        case int16_Box:
+        {
+            int16_t val = *(int16_t *)key->data + (int16_t)step;
+            if (key->isLimit && val > (int16_t)key->limit_max)
+                val = (int16_t)key->limit_max;
+            *(int16_t *)key->data = val;
+            break;
+        }
+        case uint16_Box:
+        {
+            uint16_t val = *(uint16_t *)key->data + (uint16_t)step;
+            if (key->isLimit && val > (uint16_t)key->limit_max)
+                val = (uint16_t)key->limit_max;
+            *(uint16_t *)key->data = val;
+            break;
+        }
+        case int8_Box:
+        {
+            int8_t val = *(int8_t *)key->data + (int8_t)step;
+            if (key->isLimit && val > (int8_t)key->limit_max)
+                val = (int8_t)key->limit_max;
+            *(int8_t *)key->data = val;
+            break;
+        }
+        case uint8_Box:
+        {
+            uint8_t val = *(uint8_t *)key->data + (uint8_t)step;
+            if (key->isLimit && val > (uint8_t)key->limit_max)
+                val = (uint8_t)key->limit_max;
+            *(uint8_t *)key->data = val;
+            break;
+        }
+        case float_Box:
+        {
+            float val = *(float *)key->data + step;
+            if (key->isLimit && val > key->limit_max)
+                val = key->limit_max;
+            *(float *)key->data = val;
+            break;
+        }
+
+        default:
+            break;
+    }
+}
+
+// 参数减
+static void key_sub(void)
+{
+    float step = SetupNumber[SetupIndex];
+
+    switch (key->kind)
+    {
+        case int32_Box:
+        {
+            int32_t val = *(int32_t *)key->data - (int32_t)step;
+            if (key->isLimit && val < (int32_t)key->limit_min)
+                val = (int32_t)key->limit_min;
+            *(int32_t *)key->data = val;
+            break;
+        }
+        case uint32_Box:
+        {
+            uint32_t val = *(uint32_t *)key->data - (uint32_t)step;
+            if (key->isLimit && val < (uint32_t)key->limit_min)
+                val = (uint32_t)key->limit_min;
+            *(uint32_t *)key->data = val;
+            break;
+        }
+        case int16_Box:
+        {
+            int16_t val = *(int16_t *)key->data - (int16_t)step;
+            if (key->isLimit && val < (int16_t)key->limit_min)
+                val = (int16_t)key->limit_min;
+            *(int16_t *)key->data = val;
+            break;
+        }
+        case uint16_Box:
+        {
+            uint16_t val = *(uint16_t *)key->data - (uint16_t)step;
+            if (key->isLimit && val < (uint16_t)key->limit_min)
+                val = (uint16_t)key->limit_min;
+            *(uint16_t *)key->data = val;
+            break;
+        }
+        case int8_Box:
+        {
+            int8_t val = *(int8_t *)key->data - (int8_t)step;
+            if (key->isLimit && val < (int8_t)key->limit_min)
+                val = (int8_t)key->limit_min;
+            *(int8_t *)key->data = val;
+            break;
+        }
+        case uint8_Box:
+        {
+            uint8_t val = *(uint8_t *)key->data - (uint8_t)step;
+            if (key->isLimit && val < (uint8_t)key->limit_min)
+                val = (uint8_t)key->limit_min;
+            *(uint8_t *)key->data = val;
+            break;
+        }
+        case float_Box:
+        {
+            float val = *(float *)key->data - step;
+            if (key->isLimit && val < key->limit_min)
+                val = key->limit_min;
+            *(float *)key->data = val;
+            break;
+        }
+
+        default:
+            break;
+    }
+}
+/**********************************************************/
+/*------------------------------------[E] 按键一次封装 [E]*/
+/**********************************************************/
+
+
+/**********************************************************/
+/*[S] 按键二次封装 [S]------------------------------------*/
+/**********************************************************/
+
+#ifdef FOUR_BUTTON
+
+// 四键方案: 上 / 下 / 确定 / 取消
+
+// 按键1: 上 / 参数加
+void key_up_btn(void)
+{
+    if (key->select == false)
+        key_up();
+    else
+        key_plus();
+}
+
+// 按键2: 下 / 参数减
+void key_down_btn(void)
+{
+    if (key->select == false)
+        key_down();
+    else
+        key_sub();
+}
+
+// 按键3: 进入 / 选中 / 切换bool
+void key_enter_btn(void)
+{
+    if (key->kind == MENU_Folder)
+        key_enter();
+    else if (key->kind == bool_Box)
+        key_toggle();
+    else
+        key_select();
+}
+
+// 按键4: 退出 / 步进切换
+void key_quit_btn(void)
+{
+    // 如果当前选中的是数值类型, 且处于选中状态, 则切换步进值
+    if (key->select == true)
+    {
+        setup_ctrl_plus();
+        return;
+    }
+
+    // 否则执行退出操作(不允许退到 head 层以上)
+    if (key->father->father == NULL) return;
+    key = key->father;
+    ips200_clear();
+}
+#endif
+
+
+#ifdef FIVE_BUTTON
+
+// 五键方案: 上 / 下 / 左 / 右 / 中
+
+// 上键: 上移 / 参数加
+void key_up_btn(void)
+{
+    if (key->select == false)
+        key_up();
+    else
+        key_plus();
+}
+
+// 下键: 下移 / 参数减
+void key_down_btn(void)
+{
+    if (key->select == false)
+        key_down();
+    else
+        key_sub();
+}
+
+// 左键: 退出 / 步进减
+void key_left_btn(void)
+{
+    // 选中数值时 左键 = 步进值减小
+    if (key->select == true)
+    {
+        setup_ctrl_sub();
+        return;
+    }
+
+    // 否则执行退出操作(不允许退到 head 层以上)
+    if (key->father->father == NULL) return;
+    key = key->father;
+    ips200_clear();
+}
+
+// 右键: 进入 / 步进加
+void key_right_btn(void)
+{
+    // 选中数值时 右键 = 步进值增大
+    if (key->select == true)
+    {
+        setup_ctrl_plus();
+        return;
+    }
+
+    // 否则进入子菜单
+    if (key->sons > 0)
+    {
+        key = key->first_son;
+        ips200_clear();
+    }
+}
+
+// 中键: 进入文件夹 / 切换bool / 选中-取消选中
+void key_mid_btn(void)
+{
+    if (key->kind == MENU_Folder)
+        key_enter();
+    else if (key->kind == bool_Box)
+        key_toggle();
+    else
+        key_select();
+}
+#endif
+/**********************************************************/
+/*------------------------------------[E] 按键二次封装 [E]*/
+/**********************************************************/
+
+
+/**********************************************************/
+/*[S] 调用测试实例 [S]------------------------------------*/
+/**********************************************************/
+
+// 测试变量
+int test = 10;
+float test1 = 2.2f;
+bool test2 = false;
+uint8_t test_u8 = 50;
+uint16_t test_u16 = 1000;
+
+// 初始化菜单(连接菜单节点)
+void menu_init(void)
+{
+    // 根节点已在声明时初始化, 这里只需创建子节点
+
+    Menu_Item *folder_1 = DynamicCreate_Menu_Folder(&head, "folder1");
+    DynamicCreate_Menu_Folder(&head, "folder2");
+    DynamicCreate_Menu_Folder(&head, "folder3");
+    DynamicCreate_Menu_Folder(&head, "folder4");
+
+    // folder1 下的文件
+    DynamicCreate_Menu_Number(folder_1, "aaa", &test, int32_Box);
+    DynamicCreate_Menu_Number(folder_1, "bbb", &test1, float_Box);
+    DynamicCreate_Menu_Number(folder_1, "ccc", &test2, bool_Box);
+
+    // folder1 下的子文件夹
+    Menu_Item *folder_1_1 = DynamicCreate_Menu_Folder(folder_1, "sub_f1");
+    Menu_Item *folder_1_2 = DynamicCreate_Menu_Folder(folder_1, "sub_f2");
+
+    // 带限幅的数值
+    DynamicCreate_Menu_LimitNumber(folder_1_1, "u8_num", &test_u8, uint8_Box, 0, 100);
+    DynamicCreate_Menu_LimitNumber(folder_1_1, "u16_num", &test_u16, uint16_Box, 0, 10000);
+
+    key = head.first_son;       // 初始化光标位置
+}
+/**********************************************************/
+/*------------------------------------[E] 调用测试实例 [E]*/
+/**********************************************************/
