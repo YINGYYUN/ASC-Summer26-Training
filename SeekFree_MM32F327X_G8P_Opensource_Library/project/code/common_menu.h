@@ -52,9 +52,15 @@ Menu_Item*  DynamicCreate_Menu_Folder       (Menu_Item *father, const char name[
 void        DynamicCreate_Menu_Number       (Menu_Item *father, const char name[], void *data, MENU_KIND kind);
 void        DynamicCreate_Menu_LimitNumber  (Menu_Item *father, const char name[], void *data, MENU_KIND kind, float limit_min, float limit_max);
 
+// 外部直接访问根节点和当前光标
+extern Menu_Item    head;
+extern Menu_Item    *key;
+
 // 菜单运行
-void        menu_init                       (void);
+void        menu_reset                      (void);
 void        menu_show                       (void);
+void        menu_show_all                   (void);     // 清屏 + 刷新显示
+void        menu_init                       (void);     // [DEMO] 多级菜单测试, 可删除
 
 // 二选一: 四键方案 或 五键方案
 #define FOUR_BUTTON         // 四键方案(默认)  若要五键方案请注释此行, 并启用下方 FIVE_BUTTON

@@ -474,6 +474,16 @@
               <FileType>5</FileType>
               <FilePath>..\code\common_menu.h</FilePath>
             </File>
+            <File>
+              <FileName>Param_Page.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\code\Param_Page.c</FilePath>
+            </File>
+            <File>
+              <FileName>Param_Page.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\code\Param_Page.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

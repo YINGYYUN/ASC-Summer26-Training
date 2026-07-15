@@ -291,6 +291,13 @@ void menu_show(void)
     show_key();
     show_data();
 }
+
+// 清屏 + 刷新显示(进入新页面时调用)
+void menu_show_all(void)
+{
+    ips200_clear();
+    menu_show();
+}
 /**********************************************************/
 /*------------------------------------[E] 显示调用函数 [E]*/
 /**********************************************************/
@@ -620,41 +627,52 @@ void key_mid_btn(void)
 
 
 /**********************************************************/
-/*[S] 调用测试实例 [S]------------------------------------*/
+/*[S] 菜单重置 & 测试实例 [S]------------------------------*/
 /**********************************************************/
 
-// 测试变量
+// 重置菜单(切换页面时调用, 清空内存池并重置根节点)
+void menu_reset(void)
+{
+    menu_arr_index = 0;
+    memset(menu_item_arr, 0, sizeof(menu_item_arr));
+
+    head.sons = 0;
+    head.first_son = NULL;
+    head.next_brother = NULL;
+    head.last_brother = NULL;
+
+    key = NULL;
+}
+
+// ---- 以下为测试 DEMO, 可删除 ----
 int test = 10;
 float test1 = 2.2f;
 bool test2 = false;
 uint8_t test_u8 = 50;
 uint16_t test_u16 = 1000;
 
-// 初始化菜单(连接菜单节点)
+// 测试菜单(多级文件夹演示)
 void menu_init(void)
 {
-    // 根节点已在声明时初始化, 这里只需创建子节点
+    menu_reset();
 
     Menu_Item *folder_1 = DynamicCreate_Menu_Folder(&head, "folder1");
     DynamicCreate_Menu_Folder(&head, "folder2");
     DynamicCreate_Menu_Folder(&head, "folder3");
     DynamicCreate_Menu_Folder(&head, "folder4");
 
-    // folder1 下的文件
     DynamicCreate_Menu_Number(folder_1, "aaa", &test, int32_Box);
     DynamicCreate_Menu_Number(folder_1, "bbb", &test1, float_Box);
     DynamicCreate_Menu_Number(folder_1, "ccc", &test2, bool_Box);
 
-    // folder1 下的子文件夹
     Menu_Item *folder_1_1 = DynamicCreate_Menu_Folder(folder_1, "sub_f1");
     Menu_Item *folder_1_2 = DynamicCreate_Menu_Folder(folder_1, "sub_f2");
 
-    // 带限幅的数值
-    DynamicCreate_Menu_LimitNumber(folder_1_1, "u8_num", &test_u8, uint8_Box, 0, 100);
+    DynamicCreate_Menu_LimitNumber(folder_1_1, "u8_num",  &test_u8,  uint8_Box,  0, 100);
     DynamicCreate_Menu_LimitNumber(folder_1_1, "u16_num", &test_u16, uint16_Box, 0, 10000);
 
-    key = head.first_son;       // 初始化光标位置
+    key = head.first_son;
 }
 /**********************************************************/
-/*------------------------------------[E] 调用测试实例 [E]*/
+/*------------------------------------[E] 菜单重置 & 测试 [E]*/
 /**********************************************************/

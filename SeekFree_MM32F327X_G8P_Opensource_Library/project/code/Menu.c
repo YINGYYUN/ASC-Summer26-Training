@@ -53,6 +53,7 @@ void Menu_UI(uint8_t Page)
             ips200_show_string(0  ,16 , "==============================");
             ips200_show_string(10 ,32 , "Process");
             ips200_show_string(10 ,48 , "Debug");
+            ips200_show_string(10 ,64 , "Param");
 
 			break;
 		}
@@ -90,14 +91,14 @@ void Menu_Show(void)
             key_clear_state(KEY_UP);
             key_pressed = 1;
             menu_flag --;
-            if (menu_flag < 1)menu_flag = 2;
+            if (menu_flag < 1)menu_flag = 3;
         }
         else if (KEY_SHORT_PRESS == key_get_state(KEY_DOWN))
         {
             key_clear_state(KEY_DOWN); 
             key_pressed = 1;
             menu_flag ++;
-            if (menu_flag > 2)menu_flag = 1;
+            if (menu_flag > 3)menu_flag = 1;
         }
         else if (KEY_SHORT_PRESS == key_get_state(KEY_CONFIRM))
         {
@@ -113,7 +114,7 @@ void Menu_Show(void)
             ips200_clear();
 
 
-            // 从Process模式返回，显示主菜单界面
+            // 从Process界面返回，显示主菜单界面
             ips200_clear();
             Menu_UI(1);
             ips200_show_string(0  ,32 , ">");
@@ -123,7 +124,17 @@ void Menu_Show(void)
             ips200_clear();
             Debug_Page_Menu();
 
-            // 从Debug模式返回，显示主菜单界面
+            // 从Debug界面返回，显示主菜单界面
+            ips200_clear();
+            Menu_UI(1);
+            ips200_show_string(0  ,48 , ">");
+        }
+        else if (menu_flag_temp == 3)
+        {
+            ips200_clear();
+            Param_Page_Menu();
+            
+            // 从Param界面返回，显示主菜单界面
             ips200_clear();
             Menu_UI(1);
             ips200_show_string(0  ,48 , ">");
