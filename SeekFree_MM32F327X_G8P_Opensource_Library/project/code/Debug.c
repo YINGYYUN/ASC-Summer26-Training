@@ -525,8 +525,8 @@ int Debug_Motor_PID (void)
     ips200_printf(58 ,64 , "%d  ", enc_tar[2]);
     ips200_printf(58 ,96 , "%d  ", enc_cur[1]);
     ips200_printf(58 ,112, "%d  ", enc_cur[2]);
-    ips200_printf(58 ,128, "%d  ", Motor_1_PID.Out);
-    ips200_printf(58 ,144, "%d  ", Motor_2_PID.Out);
+    ips200_printf(58 ,128, "%d  ", (int16_t)Motor_1_PID.Out);
+    ips200_printf(58 ,144, "%d  ", (int16_t)Motor_2_PID.Out);
     
     // 电机调试界面光标 标志位
     // 正常的命名为Debug_Motor_PID_flag，此处进行简化
@@ -636,12 +636,12 @@ int Debug_Motor_PID (void)
 
                     ips200_printf(58 ,96 , "%d  ", enc_cur[1]);
                     ips200_printf(58 ,112, "%d  ", enc_cur[2]);
-                    ips200_printf(58 ,128, "%d  ", Motor_1_PID.Out);
-                    ips200_printf(58 ,144, "%d  ", Motor_2_PID.Out);
+                    ips200_printf(58 ,128, "%d  ", (int16_t)Motor_1_PID.Out);
+                    ips200_printf(58 ,144, "%d  ", (int16_t)Motor_2_PID.Out);
                 }
             }
         }
-            
+        
             
         /* 电机编码器读取 */
         if (Time_Count1 > 5)// 10 * 5 ms周期
@@ -673,8 +673,8 @@ int Debug_Motor_PID (void)
 
             ips200_printf(58 ,96 , "%d  ", enc_cur[1]);
             ips200_printf(58 ,112, "%d  ", enc_cur[2]);
-            ips200_printf(58 ,128, "%d  ", Motor_1_PID.Out);
-            ips200_printf(58 ,144, "%d  ", Motor_2_PID.Out);
+            ips200_printf(58 ,128, "%d  ", (int16_t)Motor_1_PID.Out);
+            ips200_printf(58 ,144, "%d  ", (int16_t)Motor_2_PID.Out);
         }
             
             

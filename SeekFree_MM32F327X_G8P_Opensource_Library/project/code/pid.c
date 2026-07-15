@@ -107,11 +107,9 @@ void PID_INC_Update(PID_INC_t *p)
 	p->Error0 = p->Target - p->Actual;		// 目标值 - 实际值 = 此次误差
 
 	/* 增量式PID计算 与 累加至Out */
-	p->Out += (int16) (
-			 p->Kp * (p->Error0 - p->Error1)
+	p->Out += p->Kp * (p->Error0 - p->Error1)
 		   + p->Ki * p->Error0
-		   + p->Kd * (p->Error0 - 2*p->Error1 + p->Error2)
-			);
+		   + p->Kd * (p->Error0 - 2*p->Error1 + p->Error2);
 
 	/* 输出限幅 */
 	if (p->Out > p->OutMax) {p->Out = p->OutMax;}	// 限制输出值最大为结构体指定的OutMax
