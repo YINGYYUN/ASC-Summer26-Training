@@ -18,6 +18,23 @@
 #define COL_SAMPLE_STEP       (5    )   // 最长白列搜索的列采样步长
 #define EDGE_TRACK_OFFSET     (10   )   // 边缘跟踪时在上次边界±此范围内搜索
 
+// 双频搜索参数
+#define KEYFRAME_INTERVAL     (4    )   // 每 N 帧跑一次全量差比和搜边（KeyFrame）
+#define WHITE_DELTA           (15   )   // 双阈值白点判定：pixel >= s_ref_white - WHITE_DELTA 即白
+#define BLACK_DELTA           (55   )   // 双阈值黑点判定：pixel <  s_ref_white - BLACK_DELTA 即黑
+#define TRACE_SEARCH_RANGE    (6    )   // 轻量帧边界追踪时在上一行边界±此范围内搜索
+
+// 赛道几何约束（仅保留下界防明显错误，上界不设限以兼容十字等元素）
+#define MIN_HALF_WIDTH        (30   )   // 赛道半宽下限（防止异常窄）
+#define MIN_TRACK_W           (40   )   // 赛道宽度下限 (right-left 最小值)
+
+// 白带判定放宽
+#define WHITE_COL_RATIO_TH    (80   )   // 白列判定：白像素占比阈值，建议 70-90（%）
+
+// 转向输出稳定性
+#define STEER_EMA_ALPHA       (30   )   // steering EMA 新值权重，建议 20-40（%）
+#define MIN_VALID_ROWS        (10   )   // 最低有效行数，低于此值视为跟踪不可靠
+
 #define IMG_W                 (MT9V03X_W)  // 188
 #define IMG_H                 (MT9V03X_H)  // 120
 #define IMG_CENTER            (IMG_W / 2)  // 图像中心列 = 94
@@ -38,6 +55,8 @@ static uint8  s_ref_white = 128;            // 参考白点灰度值
 static int16  s_prev_left[IMG_H];           // 上一帧左边界（边缘跟踪用）
 static int16  s_prev_right[IMG_H];          // 上一帧右边界
 static uint8  s_frame_count = 0;
+static int16  s_half_width_est = 60;        // 赛道半宽估计（EMA 平滑），初值 60
+static float  s_steer_prev = 0.0f;          // 上一帧 steering_value（EMA 用）
 
 // ============================================================
 // 工具函数
@@ -56,6 +75,45 @@ static int16 calc_ratio(uint8 a, uint8 b)
 static uint8 is_white(uint8 pixel)
 {
     return (pixel >= s_ref_white - 25);
+}
+
+// 双阈值：明确为黑点（远低于参考白点）
+static uint8 is_black_dual(uint8 pixel)
+{
+    return (pixel < s_ref_white - BLACK_DELTA);
+}
+
+// 双阈值：明确为白点（接近参考白点）
+static uint8 is_white_dual(uint8 pixel)
+{
+    return (pixel > s_ref_white - WHITE_DELTA);
+}
+
+// 更新赛道半宽估计（EMA 平滑，仅下限约束）
+static void update_half_width_est(int16 left, int16 right)
+{
+    if (left >= 0 && right >= 0 && right > left)
+    {
+        int16 half = (right - left) / 2;
+        if (half >= MIN_HALF_WIDTH)
+        {
+            s_half_width_est = (int16)(((int32)s_half_width_est * 7 + (int32)half * 3) / 10);
+        }
+    }
+}
+
+// 检查该行左右边界的几何合法性（仅下界约束，兼容十字等宽元素）
+// 返回 1 表示合法，0 表示不合法（应丢弃该行边界）
+static uint8 validate_row_boundary(int16 left, int16 right,
+                                    int16 prev_left, int16 prev_right)
+{
+    (void)prev_left;   // 保留参数以备后续扩展
+    (void)prev_right;
+
+    if (left < 0 || right < 0 || right <= left) return 0;
+    if ((right - left) < MIN_TRACK_W) return 0;
+
+    return 1;
 }
 
 // ============================================================
@@ -187,9 +245,9 @@ static int16 search_boundary(int16 row, int16 start_col, int8 direction)
 
 // ============================================================
 // 查找白带区间
-// 扫描中心 1/2 宽度区域，找出所有"整列全白"（底部到顶部均为白）的列
-// 返回最大连续区间作为白带左右边缘
-// 若无整列全白的列，band_left == band_right == IMG_CENTER（退化回单起点）
+// 扫描中心 1/2 宽度区域，用白像素占比阈值判定列是否为白列
+// 返回最大连续白列区间作为白带左右边缘
+// 若无满足条件的白列，band_left == band_right == IMG_CENTER（退化回单起点）
 // ============================================================
 static void find_white_band(int16 *band_left, int16 *band_right)
 {
@@ -202,30 +260,33 @@ static void find_white_band(int16 *band_left, int16 *band_right)
     int16 cur_l     = -1;
     int16 cur_len   = 0;
 
+    // 预计算本列需要的最少白像素行数
+    int16 total_rows = (IMG_H - BOTTOM_ROW + ROW_STEP - 1) / ROW_STEP;  // 采样行总数
+    int16 min_white  = (int16)((int32)total_rows * WHITE_COL_RATIO_TH / 100);
+
     for (int16 col = col_start; col <= col_end; col += COL_SAMPLE_STEP)
     {
-        uint8 is_all_white = 1;
+        int16 white_count = 0;
 
-        // 检查该列从底部到顶部是否全白
+        // 统计该列从底部到顶部的白像素占比
         for (int16 row = BOTTOM_ROW; row < IMG_H; row += ROW_STEP)
         {
-            if (!is_white(mt9v03x_image[row][col]))
+            if (is_white(mt9v03x_image[row][col]))
             {
-                is_all_white = 0;
-                break;
+                white_count++;
             }
         }
 
-        if (is_all_white)
+        if (white_count >= min_white)
         {
             if (cur_l < 0)
             {
-                cur_l   = col;              // 新区间起点
+                cur_l   = col;
                 cur_len = 1;
             }
             else
             {
-                cur_len++;                  // 延续当前区间
+                cur_len++;
             }
         }
         else
@@ -233,7 +294,7 @@ static void find_white_band(int16 *band_left, int16 *band_right)
             if (cur_len > best_len)
             {
                 best_l   = cur_l;
-                best_r   = col - COL_SAMPLE_STEP;  // 上一个采样列
+                best_r   = col - COL_SAMPLE_STEP;
                 best_len = cur_len;
             }
             cur_l   = -1;
@@ -262,6 +323,8 @@ static void search_all_boundaries(int16 band_left, int16 band_right)
 {
     int16 prev_left  = band_left;
     int16 prev_right = band_right;
+    int16 last_valid_left  = -1;              // 上一有效行左边界（几何约束用）
+    int16 last_valid_right = -1;              // 上一有效行右边界
 
     for (int16 row = BOTTOM_ROW; row < IMG_H; row += ROW_STEP)
     {
@@ -277,8 +340,7 @@ static void search_all_boundaries(int16 band_left, int16 band_right)
         }
         else if (s_frame_count > 0 && s_prev_right[row] > 0 && prev_left < 0)
         {
-            // 用右边界估算左边界
-            prev_left = s_prev_right[row] - 120;
+            prev_left = s_prev_right[row] - s_half_width_est * 2;
             if (prev_left < 0) prev_left = 5;
         }
 
@@ -302,7 +364,7 @@ static void search_all_boundaries(int16 band_left, int16 band_right)
         }
         else if (s_frame_count > 0 && s_prev_left[row] > 0 && prev_right < 0)
         {
-            prev_right = s_prev_left[row] + 120;
+            prev_right = s_prev_left[row] + s_half_width_est * 2;
             if (prev_right >= IMG_W) prev_right = IMG_W - 5;
         }
 
@@ -317,25 +379,173 @@ static void search_all_boundaries(int16 band_left, int16 band_right)
             }
         }
 
-        // 若左右都有效则更新中线；若只有一边有效，用另一边估算
-        if (g_track_result.left_boundary[row] >= 0
-            && g_track_result.right_boundary[row] >= 0)
+        int16 l = g_track_result.left_boundary[row];
+        int16 r = g_track_result.right_boundary[row];
+
+        // 几何合法性检查：通过后才计入有效行
+        if (l >= 0 && r >= 0
+            && validate_row_boundary(l, r, last_valid_left, last_valid_right))
         {
-            g_track_result.center_line[row] =
-                (g_track_result.left_boundary[row] + g_track_result.right_boundary[row]) / 2;
+            g_track_result.center_line[row] = (l + r) / 2;
             g_track_result.valid_rows++;
+            update_half_width_est(l, r);
+            last_valid_left  = l;
+            last_valid_right = r;
         }
-        else if (g_track_result.left_boundary[row] >= 0)
+        else if (l >= 0 && r >= 0 && last_valid_left >= 0)
         {
-            g_track_result.center_line[row] = g_track_result.left_boundary[row] + 90;
+            // 几何不合法：用上一有效行修正，防止污染
+            // 不更新 valid_rows，center_line 保持 IMG_CENTER
+            g_track_result.left_boundary[row]  = -1;
+            g_track_result.right_boundary[row] = -1;
         }
-        else if (g_track_result.right_boundary[row] >= 0)
+        else if (l >= 0)
         {
-            g_track_result.center_line[row] = g_track_result.right_boundary[row] - 90;
+            g_track_result.center_line[row] = l + s_half_width_est;
+        }
+        else if (r >= 0)
+        {
+            g_track_result.center_line[row] = r - s_half_width_est;
         }
     }
 }
 
+// ============================================================
+// 轻量帧边界追踪（双阈值 + 像素级搜索）
+// 底部行从种子全量向外扫描，后续行沿上一行边界局部追踪
+// 仅访问边界附近像素，避免全行差比和搜索
+// ============================================================
+
+// 从起点沿方向搜索黑白跳变，返回边界列坐标（白点位置）
+// offset < range 表示搜索 range 个像素，不含 range 位置，避免越界风险
+static int16 trace_edge(int16 row, int16 start, int8 dir, int16 range)
+{
+    for (int16 offset = 0; offset < range; offset++)
+    {
+        int16 col = start + dir * offset;
+        if (col < 0 || col >= IMG_W) break;
+
+        uint8 pixel = mt9v03x_image[row][col];
+
+        // 明确黑点 → 边界在回退一像素（白点处）
+        if (is_black_dual(pixel))
+        {
+            int16 edge = col - dir;
+            if (edge >= 0 && edge < IMG_W) return edge;
+            return col;
+        }
+
+        // 灰度模糊区 → 差比和兜底判定
+        if (!is_white_dual(pixel))
+        {
+            int16 adj = col - dir;
+            if (adj >= 0 && adj < IMG_W)
+            {
+                if (calc_ratio(mt9v03x_image[row][adj], pixel) > RATIO_THRESHOLD)
+                {
+                    return adj;
+                }
+            }
+        }
+    }
+    return -1;
+}
+
+static void trace_boundaries_light_frame(int16 band_left, int16 band_right)
+{
+    int16 prev_left  = -1;
+    int16 prev_right = -1;
+    int16 last_valid_left  = -1;
+    int16 last_valid_right = -1;
+
+    // ---- 底部行：从种子全量向外扫描找确切边界 ----
+    if (band_left >= 0)
+    {
+        prev_left = trace_edge(BOTTOM_ROW, band_left, -1, IMG_W / 2);
+    }
+    if (band_right >= 0)
+    {
+        prev_right = trace_edge(BOTTOM_ROW, band_right, +1, IMG_W / 2);
+    }
+
+    g_track_result.left_boundary[BOTTOM_ROW]  = prev_left;
+    g_track_result.right_boundary[BOTTOM_ROW] = prev_right;
+    if (prev_left >= 0 && prev_right >= 0
+        && validate_row_boundary(prev_left, prev_right, -1, -1))
+    {
+        g_track_result.center_line[BOTTOM_ROW] = (prev_left + prev_right) / 2;
+        g_track_result.valid_rows++;
+        update_half_width_est(prev_left, prev_right);
+        last_valid_left  = prev_left;
+        last_valid_right = prev_right;
+    }
+
+    // ---- 逐行向上局部追踪 ----
+    for (int16 row = BOTTOM_ROW + ROW_STEP; row < IMG_H; row += ROW_STEP)
+    {
+        g_track_result.left_boundary[row]  = -1;
+        g_track_result.right_boundary[row] = -1;
+
+        if (prev_left >= 0)
+        {
+            // 从边界内侧 3px 处开始，确保起点为白点
+            int16 start_col = prev_left + 3;
+            if (start_col >= IMG_W) start_col = IMG_W - 1;
+            int16 left = trace_edge(row, start_col, -1, TRACE_SEARCH_RANGE + 3);
+            if (left >= 0)
+            {
+                g_track_result.left_boundary[row] = left;
+                prev_left = left;
+            }
+            else
+            {
+                prev_left = -1;
+            }
+        }
+
+        if (prev_right >= 0)
+        {
+            int16 start_col = prev_right - 3;
+            if (start_col < 0) start_col = 0;
+            int16 right = trace_edge(row, start_col, +1, TRACE_SEARCH_RANGE + 3);
+            if (right >= 0)
+            {
+                g_track_result.right_boundary[row] = right;
+                prev_right = right;
+            }
+            else
+            {
+                prev_right = -1;
+            }
+        }
+
+        int16 l = g_track_result.left_boundary[row];
+        int16 r = g_track_result.right_boundary[row];
+
+        if (l >= 0 && r >= 0
+            && validate_row_boundary(l, r, last_valid_left, last_valid_right))
+        {
+            g_track_result.center_line[row] = (l + r) / 2;
+            g_track_result.valid_rows++;
+            update_half_width_est(l, r);
+            last_valid_left  = l;
+            last_valid_right = r;
+        }
+        else if (l >= 0 && r >= 0 && last_valid_left >= 0)
+        {
+            g_track_result.left_boundary[row]  = -1;
+            g_track_result.right_boundary[row] = -1;
+        }
+        else if (l >= 0)
+        {
+            g_track_result.center_line[row] = l + s_half_width_est;
+        }
+        else if (r >= 0)
+        {
+            g_track_result.center_line[row] = r - s_half_width_est;
+        }
+    }
+}
 // ============================================================
 // 计算转角值
 // 将每行中线与图像中心的偏差累加，弯道越大偏差累计越大
@@ -343,36 +553,43 @@ static void search_all_boundaries(int16 band_left, int16 band_right)
 // ============================================================
 static void calc_steering_value(void)
 {
-    if (g_track_result.valid_rows == 0)
-    {
-        g_track_result.steering_value = 0.0f;
-        return;
-    }
+    float raw_steer = 0.0f;
 
-    float total_deviation = 0.0f;
-    float total_weight    = 0.0f;
-
-    for (int16 row = BOTTOM_ROW; row < IMG_H; row += ROW_STEP)
+    if (g_track_result.valid_rows >= MIN_VALID_ROWS)
     {
-        if (g_track_result.left_boundary[row] >= 0
-            && g_track_result.right_boundary[row] >= 0)
+        float total_deviation = 0.0f;
+        float total_weight    = 0.0f;
+
+        // row=0 为图像底部（最近行），越靠近底部权重越高
+        for (int16 row = BOTTOM_ROW; row < IMG_H; row += ROW_STEP)
         {
-            int16 deviation = (int16)g_track_result.center_line[row] - IMG_CENTER;
-            float weight = 1.0f + (float)(IMG_H - row) / (float)IMG_H * 2.0f;
-            // weight: 底部权重大（近处更重要），顶部权重小
-            total_deviation += deviation * weight;
-            total_weight     += weight;
+            if (g_track_result.left_boundary[row] >= 0
+                && g_track_result.right_boundary[row] >= 0)
+            {
+                int16 deviation = (int16)g_track_result.center_line[row] - IMG_CENTER;
+                float weight = 1.0f + (float)(IMG_H - row) / (float)IMG_H * 2.0f;
+                total_deviation += deviation * weight;
+                total_weight     += weight;
+            }
         }
-    }
 
-    if (total_weight > 0.0f)
-    {
-        g_track_result.steering_value = total_deviation / total_weight;
+        if (total_weight > 0.0f)
+        {
+            raw_steer = total_deviation / total_weight;
+        }
     }
     else
     {
-        g_track_result.steering_value = 0.0f;
+        // 有效行不足 → 衰减至零，避免跟踪不可靠时继续打角
+        raw_steer = s_steer_prev * 0.5f;
     }
+
+    // EMA 一阶低通平滑，抑制帧间抖动
+    g_track_result.steering_value =
+        s_steer_prev * (1.0f - (float)STEER_EMA_ALPHA / 100.0f)
+        + raw_steer * ((float)STEER_EMA_ALPHA / 100.0f);
+
+    s_steer_prev = g_track_result.steering_value;
 }
 
 // ============================================================
@@ -394,8 +611,10 @@ static void save_boundary_for_next_frame(void)
 // 初始化赛道识别模块
 void TrackRecognition_Init(void)
 {
-    s_ref_white   = 128;
-    s_frame_count = 0;
+    s_ref_white       = 128;
+    s_frame_count     = 0;
+    s_half_width_est  = 60;
+    s_steer_prev      = 0.0f;
 
     for (int16 i = 0; i < IMG_H; i++)
     {
@@ -411,24 +630,36 @@ void TrackRecognition_Init(void)
 
 // 赛道识别主处理
 // 每次新帧到来时调用一次
+// KeyFrame (每 KEYFRAME_INTERVAL 帧): 全量差比和搜边 → 修正累积误差
+// 轻量帧 (其余帧): 边界追踪 → 低开销实时跟踪
 void TrackRecognition_Process(void)
 {
     // 步骤 1：查找参考白点
     find_ref_white();
 
-    // 步骤 2：查找白带区间（整列全白的连续区域）
+    // 步骤 2：查找白带区间（白像素占比 >= 阈值的连续列区间）
     int16 band_left, band_right;
     find_white_band(&band_left, &band_right);
 
-    // 若无整列全白列，退化回最长白列作为单一搜索起点
+    // 若无足够白列，退化回最长白列作为单一搜索起点
     if (band_left == band_right)
     {
         band_left = band_right = find_longest_white_col();
     }
 
-    // 步骤 3：搜索全部行的左右边界
+    // 步骤 3：搜索全部行的左右边界（KeyFrame / 轻量帧 二选一）
     g_track_result.valid_rows = 0;
-    search_all_boundaries(band_left, band_right);
+
+    if (s_frame_count % KEYFRAME_INTERVAL == 0)
+    {
+        // KeyFrame：全量差比和搜边 + 边缘跟踪，修正追踪累积误差
+        search_all_boundaries(band_left, band_right);
+    }
+    else
+    {
+        // 轻量帧：双阈值边界追踪，仅访问边界附近像素
+        trace_boundaries_light_frame(band_left, band_right);
+    }
 
     // 步骤 4：计算转角值
     calc_steering_value();

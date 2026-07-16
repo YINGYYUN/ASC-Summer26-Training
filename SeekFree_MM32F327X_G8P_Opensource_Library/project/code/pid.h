@@ -56,6 +56,8 @@ typedef struct {
 	
 	float OutMax;			// 输出最大值
 	float OutMin;			// 输出最小值
+	
+	float OutDeltaMax;		// 单次增量变化上限（=0 时不限制，>0 时每次 Out 变化不超过此值）
 } PID_INC_t;
 
 

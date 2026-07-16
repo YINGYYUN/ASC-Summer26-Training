@@ -351,10 +351,6 @@ int Debug_Motor (void)
     ips200_show_string(0 ,48 , ">");
     ips200_printf(58 ,48 , "%d  ", pwm[1]);
     ips200_printf(58 ,64 , "%d  ", pwm[2]);
-    ips200_printf(58 ,96 , "%d  ", enc_cur[1]);
-    ips200_printf(58 ,112, "%d  ", enc_cur[2]);
-    ips200_printf(58 ,128, "%d  ", enc_sum[1]);
-    ips200_printf(58 ,144, "%d  ", enc_sum[2]);
 
     // 电机调试界面光标 标志位
     // 正常的命名为Debug_Motor_flag，此处进行简化
@@ -434,7 +430,7 @@ int Debug_Motor (void)
                 }
                 
                 /* 电机编码器读取 */
-                if (Time_Count2 > 5)// 10 * 5 ms周期
+                if (Time_Count2 >= 2)// 10ms * 2 周期
                 {
                     Time_Count2 = 0;
                     
@@ -454,7 +450,7 @@ int Debug_Motor (void)
             
             
         /* 电机编码器读取 */
-        if (Time_Count2 > 5)// 10 * 5 ms周期
+        if (Time_Count2 >= 2)// 10ms * 2 周期
         {
             Time_Count2 = 0;
             
@@ -522,12 +518,9 @@ int Debug_Motor_PID (void)
     Time_Count2 = 0;
 
 	Debug_Motor_PID_UI();
+	ips200_show_string(0 ,48 , ">");
     ips200_printf(58 ,48 , "%d  ", enc_tar[1]);
     ips200_printf(58 ,64 , "%d  ", enc_tar[2]);
-    ips200_printf(58 ,96 , "%d  ", enc_cur[1]);
-    ips200_printf(58 ,112, "%d  ", enc_cur[2]);
-    ips200_printf(58 ,128, "%d  ", (int16_t)Motor_1_PID.Out);
-    ips200_printf(58 ,144, "%d  ", (int16_t)Motor_2_PID.Out);
     
     // 电机调试界面光标 标志位
     // 正常的命名为Debug_Motor_PID_flag，此处进行简化
@@ -586,14 +579,14 @@ int Debug_Motor_PID (void)
                 if (KEY_SHORT_PRESS == key_get_state(KEY_UP))
                 {
                     key_clear_state(KEY_UP);
-                    enc_tar[Debug_M_P_f] += 20;
+                    enc_tar[Debug_M_P_f] += 50;
                     if (enc_tar[Debug_M_P_f] > 1000)enc_tar[Debug_M_P_f] = 1000;
                     ips200_printf(58 ,32 + 16*Debug_M_P_f, "%d  ", enc_tar[Debug_M_P_f]);
                 }
                 else if (KEY_SHORT_PRESS == key_get_state(KEY_DOWN))
                 {
                     key_clear_state(KEY_DOWN);
-                    enc_tar[Debug_M_P_f] -= 20;
+                    enc_tar[Debug_M_P_f] -= 50;
                     if (enc_tar[Debug_M_P_f] < -1000)enc_tar[Debug_M_P_f] = -1000;
                     ips200_printf(58 ,32 + 16*Debug_M_P_f, "%d  ", enc_tar[Debug_M_P_f]);
                 }
@@ -609,7 +602,7 @@ int Debug_Motor_PID (void)
 
                 
                 /* 电机编码器读取 */
-                if (Time_Count1 > 5)// 10 * 5 ms周期
+                if (Time_Count1 >= 2)// 10ms * 2 周期
                 {
                     Time_Count1 = 0;
                     
@@ -632,7 +625,7 @@ int Debug_Motor_PID (void)
 
 
                 /* 数据显示 */
-                if (Time_Count2 > 10)// 10 * 10 ms周期
+                if (Time_Count2 >= 10)// 10ms * 10 周期
                 {
                     Time_Count2 = 0;
 
@@ -646,7 +639,7 @@ int Debug_Motor_PID (void)
         
             
         /* 电机编码器读取 */
-        if (Time_Count1 > 5)// 10 * 5 ms周期
+        if (Time_Count1 >= 2)// 10ms * 2 = 20ms 周期
         {
             Time_Count1 = 0;
             

@@ -106,10 +106,20 @@ void PID_INC_Update(PID_INC_t *p)
 	p->Error1 = p->Error0;					// Error0 → Error1（保存上次误差）
 	p->Error0 = p->Target - p->Actual;		// 目标值 - 实际值 = 此次误差
 
-	/* 增量式PID计算 与 累加至Out */
-	p->Out += p->Kp * (p->Error0 - p->Error1)
-		   + p->Ki * p->Error0
-		   + p->Kd * (p->Error0 - 2*p->Error1 + p->Error2);
+	/* 增量式PID计算 */
+	float delta = p->Kp * (p->Error0 - p->Error1)
+				+ p->Ki * p->Error0
+				+ p->Kd * (p->Error0 - 2*p->Error1 + p->Error2);
+
+	/* 单次增量限幅（OutDeltaMax > 0 时生效）*/
+	if (p->OutDeltaMax > 0)
+	{
+		if (delta >  p->OutDeltaMax) delta =  p->OutDeltaMax;
+		if (delta < -p->OutDeltaMax) delta = -p->OutDeltaMax;
+	}
+
+	/* 累加至Out */
+	p->Out += delta;
 
 	/* 输出限幅 */
 	if (p->Out > p->OutMax) {p->Out = p->OutMax;}	// 限制输出值最大为结构体指定的OutMax
@@ -132,14 +142,16 @@ void PID_INC_Update(PID_INC_t *p)
 
 // 电机1 PID参数
 PID_INC_t Motor_1_PID = {
-	.OutMax =  6000,					// 输出限幅（上限）
-	.OutMin = -6000,					// 输出限幅（下限）
+	.OutMax      =  5000,				// 输出限幅（上限）
+	.OutMin      = -5000,				// 输出限幅（下限）
+	.OutDeltaMax =   400,				// 单次增量变化上限（≈4%占空比）
 };
 
 // 电机2 PID参数
 PID_INC_t Motor_2_PID = {
-	.OutMax =  6000,					// 输出限幅（上限）
-	.OutMin = -6000,					// 输出限幅（下限）
+	.OutMax      =  5000,				// 输出限幅（上限）
+	.OutMin      = -5000,				// 输出限幅（下限）
+	.OutDeltaMax =   400,				// 单次增量变化上限（≈4%占空比）
 };
 
 /**********************************************************/
