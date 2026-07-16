@@ -12,9 +12,9 @@ extern PID_INC_t Motor_2_PID;   // 电机2 PID (右轮)
 // 默认参数值(首次使用或恢复出厂设置时使用)
 static const float DEFAULT_PARAMS[PARAM_COUNT] = {
     // Motor_1_PID
-    5.0f, 1.0f, 1.0f,       // Kp, Ki, Kd
+    25.0f, 0.0f, 0.0f,       // Kp, Ki, Kd
     // Motor_2_PID
-    5.0f, 1.0f, 1.0f,       // Kp, Ki, Kd
+    25.0f, 0.0f, 0.0f,       // Kp, Ki, Kd
     // 预留(默认 0)
     0.0f, 0.0f, 0.0f, 0.0f,
 };

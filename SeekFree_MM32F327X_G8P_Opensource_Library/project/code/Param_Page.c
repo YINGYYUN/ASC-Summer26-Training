@@ -15,15 +15,15 @@ static void param_page_init(void)
 
     // ---------- 电机1 PID ----------
     Menu_Item *folder_m1 = DynamicCreate_Menu_Folder(&head, "Motor1_PID");
-    DynamicCreate_Menu_LimitNumber(folder_m1, "Kp", &MOTOR1_KP, float_Box, 0, 100);
+    DynamicCreate_Menu_LimitNumber(folder_m1, "Kp", &MOTOR1_KP, float_Box, 0, 60);
     DynamicCreate_Menu_LimitNumber(folder_m1, "Ki", &MOTOR1_KI, float_Box, 0, 10);
-    DynamicCreate_Menu_LimitNumber(folder_m1, "Kd", &MOTOR1_KD, float_Box, 0, 1);
+    DynamicCreate_Menu_LimitNumber(folder_m1, "Kd", &MOTOR1_KD, float_Box, 0, 20);
 
     // ---------- 电机2 PID ----------
     Menu_Item *folder_m2 = DynamicCreate_Menu_Folder(&head, "Motor2_PID");
-    DynamicCreate_Menu_LimitNumber(folder_m2, "Kp", &MOTOR2_KP, float_Box, 0, 100);
+    DynamicCreate_Menu_LimitNumber(folder_m2, "Kp", &MOTOR2_KP, float_Box, 0, 60);
     DynamicCreate_Menu_LimitNumber(folder_m2, "Ki", &MOTOR2_KI, float_Box, 0, 10);
-    DynamicCreate_Menu_LimitNumber(folder_m2, "Kd", &MOTOR2_KD, float_Box, 0, 1);
+    DynamicCreate_Menu_LimitNumber(folder_m2, "Kd", &MOTOR2_KD, float_Box, 0, 20);
 
     key = head.first_son;   // 光标移到第一项
 }

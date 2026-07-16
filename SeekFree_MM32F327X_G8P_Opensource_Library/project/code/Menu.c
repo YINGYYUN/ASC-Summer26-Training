@@ -140,7 +140,7 @@ void Menu_Show(void)
             // 从Param界面返回，显示主菜单界面
             ips200_clear();
             Menu_UI(1);
-            ips200_show_string(0  ,48 , ">");
+            ips200_show_string(0  ,64 , ">");
         }
 
 

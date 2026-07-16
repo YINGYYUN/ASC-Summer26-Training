@@ -34,8 +34,8 @@ Menu_Item head = {
 Menu_Item *key;
 
 // 步进值控制
-#define SETUP_LEN               (6)
-static float SetupNumber[SETUP_LEN] = {0.01f, 0.1f, 1, 10, 100, 1000};
+#define SETUP_LEN               (5)
+static float SetupNumber[SETUP_LEN] = {0.01f, 0.1f, 1, 10, 100};
 static uint8_t SetupIndex = 2;          // 默认步进 = 1
 
 
