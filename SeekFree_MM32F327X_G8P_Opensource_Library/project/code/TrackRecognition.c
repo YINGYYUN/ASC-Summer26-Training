@@ -61,6 +61,7 @@ static uint8 is_white(uint8 pixel)
 // ============================================================
 // 查找参考白点
 // 在图像底部中心区域采样，取较亮的像素平均作为白点参考
+// 使用 EMA 平滑避免光照突变导致参考值剧烈抖动
 // ============================================================
 static void find_ref_white(void)
 {
@@ -89,13 +90,16 @@ static void find_ref_white(void)
 
     if (count > 20)
     {
-        s_ref_white = (uint8)(sum / count);
+        uint8 new_white = (uint8)(sum / count);
+        // EMA 平滑：30% 新值 + 70% 旧值，避免单帧异常引起突变
+        s_ref_white = (uint8)(((uint16)s_ref_white * 7 + (uint16)new_white * 3) / 10);
     }
 }
 
 // ============================================================
 // 查找最长白列
-// 在图像底部采样多列，用差比和从下往上找第一个黑点
+// 仅在图像中心 1/2 区域采样（车始终在赛道中，边缘无需搜索）
+// 用差比和从下往上找第一个黑点
 // 找到黑点后判断白色长度 = 黑点所在行 - BOTTOM_ROW
 // 返回白色最长的那一列
 // ============================================================
@@ -105,7 +109,11 @@ static int16 find_longest_white_col(void)
     int16 longest_dist = 0;
     uint8 search_a = s_ref_white;             // 参考白点作为 a
 
-    for (int16 col = 10; col < (IMG_W - 10); col += COL_SAMPLE_STEP)
+    // 最长白线搜索起止位置（图像中心 1/2 宽度区域）
+    int16 col_start = IMG_W / 4;              // 左 1/4 处
+    int16 col_end   = IMG_W * 3 / 4;          // 右 3/4 处
+
+    for (int16 col = col_start; col <= col_end; col += COL_SAMPLE_STEP)
     {
         for (int16 row = BOTTOM_ROW; row < IMG_H; row++)
         {
@@ -178,14 +186,82 @@ static int16 search_boundary(int16 row, int16 start_col, int8 direction)
 }
 
 // ============================================================
-// 边界搜索入口
-// 对每一行使用边缘跟踪策略搜索左右边界
-// 第一帧从最长白列开始搜，后续帧从上一帧边界附近开始搜
+// 查找白带区间
+// 扫描中心 1/2 宽度区域，找出所有"整列全白"（底部到顶部均为白）的列
+// 返回最大连续区间作为白带左右边缘
+// 若无整列全白的列，band_left == band_right == IMG_CENTER（退化回单起点）
 // ============================================================
-static void search_all_boundaries(int16 start_col)
+static void find_white_band(int16 *band_left, int16 *band_right)
 {
-    int16 prev_left  = start_col;
-    int16 prev_right = start_col;
+    int16 col_start = IMG_W / 4;
+    int16 col_end   = IMG_W * 3 / 4;
+    int16 best_l    = IMG_CENTER;
+    int16 best_r    = IMG_CENTER;
+    int16 best_len  = 0;
+
+    int16 cur_l     = -1;
+    int16 cur_len   = 0;
+
+    for (int16 col = col_start; col <= col_end; col += COL_SAMPLE_STEP)
+    {
+        uint8 is_all_white = 1;
+
+        // 检查该列从底部到顶部是否全白
+        for (int16 row = BOTTOM_ROW; row < IMG_H; row += ROW_STEP)
+        {
+            if (!is_white(mt9v03x_image[row][col]))
+            {
+                is_all_white = 0;
+                break;
+            }
+        }
+
+        if (is_all_white)
+        {
+            if (cur_l < 0)
+            {
+                cur_l   = col;              // 新区间起点
+                cur_len = 1;
+            }
+            else
+            {
+                cur_len++;                  // 延续当前区间
+            }
+        }
+        else
+        {
+            if (cur_len > best_len)
+            {
+                best_l   = cur_l;
+                best_r   = col - COL_SAMPLE_STEP;  // 上一个采样列
+                best_len = cur_len;
+            }
+            cur_l   = -1;
+            cur_len = 0;
+        }
+    }
+
+    // 收尾：处理最后一个区间
+    if (cur_len > best_len)
+    {
+        best_l   = cur_l;
+        best_r   = cur_l + (int16)(cur_len - 1) * COL_SAMPLE_STEP;
+        best_len = cur_len;
+    }
+
+    *band_left  = best_l;
+    *band_right = best_r;
+}
+
+// ============================================================
+// 边界搜索入口
+// band_left/band_right: 白带左右边缘，相等时退化为单一搜索起点
+// 对每一行使用边缘跟踪策略搜索左右边界
+// ============================================================
+static void search_all_boundaries(int16 band_left, int16 band_right)
+{
+    int16 prev_left  = band_left;
+    int16 prev_right = band_right;
 
     for (int16 row = BOTTOM_ROW; row < IMG_H; row += ROW_STEP)
     {
@@ -207,7 +283,7 @@ static void search_all_boundaries(int16 start_col)
         }
 
         // 搜索左边界
-        if (prev_left > 0 && prev_left < IMG_W)
+        if (prev_left >= 0 && prev_left < IMG_W)
         {
             int16 left = search_boundary(row, prev_left, -1);
             if (left >= 0)
@@ -231,7 +307,7 @@ static void search_all_boundaries(int16 start_col)
         }
 
         // 搜索右边界
-        if (prev_right > 0 && prev_right < IMG_W)
+        if (prev_right >= 0 && prev_right < IMG_W)
         {
             int16 right = search_boundary(row, prev_right, 1);
             if (right >= 0 && right < IMG_W)
@@ -340,12 +416,19 @@ void TrackRecognition_Process(void)
     // 步骤 1：查找参考白点
     find_ref_white();
 
-    // 步骤 2：查找最长白列作为搜索起点
-    int16 start_col = find_longest_white_col();
+    // 步骤 2：查找白带区间（整列全白的连续区域）
+    int16 band_left, band_right;
+    find_white_band(&band_left, &band_right);
+
+    // 若无整列全白列，退化回最长白列作为单一搜索起点
+    if (band_left == band_right)
+    {
+        band_left = band_right = find_longest_white_col();
+    }
 
     // 步骤 3：搜索全部行的左右边界
     g_track_result.valid_rows = 0;
-    search_all_boundaries(start_col);
+    search_all_boundaries(band_left, band_right);
 
     // 步骤 4：计算转角值
     calc_steering_value();
