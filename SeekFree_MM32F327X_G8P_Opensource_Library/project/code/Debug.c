@@ -812,9 +812,10 @@ int Debug_MT9_Track     (void)
                 timer_start(TIM_2);
 
                 // 图像从 y=32 开始，避开顶部标题行
+                // 传入当前 Otsu 阈值显示二值化图像，与算法看到的完全一致
                 ips200_show_gray_image(0, 32,
                     mt9v03x_image[0], MT9V03X_W, MT9V03X_H,
-                    MT9V03X_W, MT9V03X_H, 0);
+                    MT9V03X_W, MT9V03X_H, TrackRecognition_GetThreshold());
 
                 // 叠加赛道边界/中线（对齐图像偏移）
                 TrackRecognition_DrawOverlay(32);

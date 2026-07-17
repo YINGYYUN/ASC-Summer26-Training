@@ -3,7 +3,9 @@
  * 大津法（OTSU）二值化 + 最长白列种子 + 八邻域边界追踪
  *
  * 坐标系：image[0] = 远处（图像顶部），image[119] = 近处（图像底部）
- * 流程：Otsu阈值 → 最长白列找种子 → 底部白→黑黑扫边界 → 八邻域向上追边
+ * 流程：画黑框 → Otsu阈值 → 最长白列找种子 → 底部白→黑黑扫边界 → 八邻域向上追边
+ *
+ * 函数排版按实际调用顺序自上而下排列
  *******************************************************************************/
 
 #include "TrackRecognition.h"
@@ -39,11 +41,44 @@ static uint8  s_otsu_threshold = 128;        // 大津法阈值（EMA 平滑）
 static uint8  s_otsu_last_valid = 128;        // 上一帧合法阈值（有效性过滤用）
 
 // ============================================================
-// 大津法求阈值（快速版，全图 1/4 采样）
+// 搜索前置：给图像画黑框（左右各2列 + 顶部2行涂黑）
+// 保证八邻域追踪碰到边缘黑像素自然终止，不会越界
 // ============================================================
+static void draw_image_black_border(void)
+{
+    uint8 i;
+    // 左右各 2 列涂黑
+    for (i = 0; i < IMG_H; i++)
+    {
+        mt9v03x_image[i][0]           = 0;
+        mt9v03x_image[i][1]           = 0;
+        mt9v03x_image[i][IMG_W - 1]   = 0;
+        mt9v03x_image[i][IMG_W - 2]   = 0;
+    }
+    // 顶部 2 行涂黑
+    for (i = 0; i < IMG_W; i++)
+    {
+        mt9v03x_image[0][i] = 0;
+        mt9v03x_image[1][i] = 0;
+    }
+}
+
+// ============================================================
+// 大津法求阈值（快速版，全图 1/4 采样）
+//
+// 定义 OTSU_USE_FIXED_THRESHOLD 则跳过 OTSU 计算，直接返回固定阈值
+// 取消定义则正常运行大津法自适应阈值
+// ============================================================
+
+// #define OTSU_USE_FIXED_THRESHOLD  240   // 取消注释则使用固定阈值
+
+#define GrayScale 256
+
 static uint8 otsu_find_threshold(void)
 {
-#define GrayScale 256
+#ifdef OTSU_USE_FIXED_THRESHOLD
+    return (uint8)OTSU_USE_FIXED_THRESHOLD;
+#else
     int Pixel_Max = 0;
     int Pixel_Min = 255;
     static int pixelCount[GrayScale];        // 静态避免栈溢出
@@ -108,6 +143,7 @@ static uint8 otsu_find_threshold(void)
         threshold = s_otsu_last_valid;
 
     return threshold;
+#endif
 }
 
 // ============================================================
@@ -245,11 +281,16 @@ static uint8 trace_right_boundary(int16 *row, int16 *col, int16 *dir)
 }
 
 // ============================================================
-// 边界搜索主入口
+// 边界搜索主入口（串联以上所有步骤）
+//  0) 画黑框 → 1) 重置数据 → 2) Otsu阈值 → 3) 最长白列种子
+//  → 4) 底部边界 → 5) 八邻域向上追踪
 // ============================================================
 static void search_boundaries(void)
 {
-    // 0) 重置全部行数据，防止上一帧残留
+    // 0) 画黑框，保证八邻域追踪不会越界
+    draw_image_black_border();
+
+    // 1) 重置全部行数据，防止上一帧残留
     g_track_result.valid_rows = 0;
     for (int16 i = 0; i < IMG_H; i++)
     {
@@ -258,14 +299,14 @@ static void search_boundaries(void)
         g_track_result.center_line[i]    = IMG_CENTER;
     }
 
-    // 1) 大津法阈值（EMA 平滑）
+    // 2) 大津法阈值（EMA 平滑）
     uint8 raw_th = otsu_find_threshold();
     s_otsu_threshold = (uint8)(((uint16)s_otsu_threshold * 7 + (uint16)raw_th * 3) / 10);
 
-    // 2) 最长白列找种子（从底部向上）
+    // 3) 最长白列找种子（从底部向上）
     int16 seed = otsu_longest_white_col();
 
-    // 3) 底部行向外扫描确切边界（白→黑黑）
+    // 4) 底部行向外扫描确切边界（白→黑黑）
     int16 bot_l, bot_r;
     otsu_bottom_boundary(seed, &bot_l, &bot_r);
 
@@ -277,7 +318,7 @@ static void search_boundaries(void)
         g_track_result.valid_rows++;
     }
 
-    // 4) 八邻域向上追踪：从底部(119)追到顶部(0)
+    // 5) 八邻域向上追踪：从底部(119)追到顶部(0)
     // 向上 = row 减小，while 用 > 而非 <
     int16 lr = BOTTOM_ROW, lc = bot_l, ld = 6;   // 左边界初始方向 = 6 (左)
     int16 rr = BOTTOM_ROW, rc = bot_r, rd = 2;   // 右边界初始方向 = 2 (右)
@@ -332,7 +373,7 @@ static void search_boundaries(void)
 }
 
 // ============================================================
-// 计算转角值
+// 计算转角值（基于所有有效行的加权中线偏移）
 // BOTTOM_ROW=119 是最近行（权重最高），row=0 是最远行
 // ============================================================
 static void calc_steering_value(void)
@@ -366,7 +407,7 @@ static void calc_steering_value(void)
 }
 
 // ============================================================
-// 保存当前帧边界
+// 保存当前帧边界（供下一帧参考，当前预留未使用）
 // ============================================================
 static void save_boundary_for_next_frame(void)
 {
@@ -374,6 +415,35 @@ static void save_boundary_for_next_frame(void)
     {
         s_prev_left[row]  = g_track_result.left_boundary[row];
         s_prev_right[row] = g_track_result.right_boundary[row];
+    }
+}
+
+// ============================================================
+// 叠加绘制：画单行的边界点与中线
+// ============================================================
+static void draw_row_overlay(int16 row, uint16 y_offset)
+{
+    int16 left  = g_track_result.left_boundary[row];
+    int16 right = g_track_result.right_boundary[row];
+    int16 center = g_track_result.center_line[row];
+    uint16 y_screen = (uint16)row + y_offset;
+
+    if (left >= 0 && left + 1 < IMG_W)
+    {
+        ips200_draw_point(left,     y_screen, RGB565_RED);
+        ips200_draw_point(left + 1, y_screen, RGB565_RED);
+    }
+
+    if (right >= 0 && right + 1 < IMG_W)
+    {
+        ips200_draw_point(right,     y_screen, RGB565_BLUE);
+        ips200_draw_point(right + 1, y_screen, RGB565_BLUE);
+    }
+
+    if (center >= 0 && center < IMG_W
+        && left >= 0 && right >= 0)
+    {
+        ips200_draw_point(center, y_screen, RGB565_GREEN);
     }
 }
 
@@ -401,7 +471,6 @@ void TrackRecognition_Init(void)
 
 void TrackRecognition_Process(void)
 {
-    // search_boundaries 内部已重置 valid_rows 和边界数组
     search_boundaries();
 
     calc_steering_value();
@@ -409,38 +478,13 @@ void TrackRecognition_Process(void)
     s_frame_count++;
 }
 
-static void draw_row_overlay(int16 row, uint16 y_offset)
+uint8 TrackRecognition_GetThreshold(void)
 {
-    int16 left  = g_track_result.left_boundary[row];
-    int16 right = g_track_result.right_boundary[row];
-    int16 center = g_track_result.center_line[row];
-    uint16 y_screen = (uint16)row + y_offset;
-
-    if (left >= 0 && left + 1 < IMG_W)
-    {
-        ips200_draw_point(left,     y_screen, RGB565_RED);
-        ips200_draw_point(left + 1, y_screen, RGB565_RED);
-    }
-
-    if (right >= 0 && right + 1 < IMG_W)
-    {
-        ips200_draw_point(right,     y_screen, RGB565_BLUE);
-        ips200_draw_point(right + 1, y_screen, RGB565_BLUE);
-    }
-
-    if (center >= 0 && center < IMG_W
-        && left >= 0 && right >= 0)
-    {
-        ips200_draw_point(center, y_screen, RGB565_GREEN);
-    }
+    return s_otsu_threshold;
 }
 
 void TrackRecognition_DrawOverlay(uint16 y_offset)
 {
-    // image[0] 显示在屏幕 y=0+y_offset，image[119] 在 y=119+y_offset
-    // 遍历顺序与 search_boundaries 填充行一致：
-    // BOTTOM_ROW(119) + BOTTOM_ROW-1 向下以 ROW_STEP 递减
-
     draw_row_overlay(BOTTOM_ROW, y_offset);
 
     for (int16 row = BOTTOM_ROW - 1; row >= 0; row -= ROW_STEP)

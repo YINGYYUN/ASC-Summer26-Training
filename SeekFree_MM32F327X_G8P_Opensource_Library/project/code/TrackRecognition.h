@@ -16,8 +16,9 @@ typedef struct
 extern TrackResult_t g_track_result;
 
 // 外部接口函数
-void TrackRecognition_Init        (void);
-void TrackRecognition_Process     (void);
-void TrackRecognition_DrawOverlay (uint16 y_offset);
+void  TrackRecognition_Init         (void);
+void  TrackRecognition_Process      (void);
+void  TrackRecognition_DrawOverlay  (uint16 y_offset);
+uint8 TrackRecognition_GetThreshold (void);
 
 #endif
