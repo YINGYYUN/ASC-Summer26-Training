@@ -70,8 +70,8 @@ void Debug_Motor_PID_UI(void)
 	// 空行
 	ips200_show_string(0  ,96 , "ENC 1:");
 	ips200_show_string(0  ,112, "ENC 2:");
-	ips200_show_string(10 ,128, "PWM 1:");
-	ips200_show_string(10 ,144, "PWM 2:");
+	ips200_show_string(0  ,128, "PWM 1:");
+	ips200_show_string(0  ,144, "PWM 2:");
 }
 
 // [三级界面]MT9V03x调试界面    
@@ -80,6 +80,10 @@ void Debug_MT9V03x_UI(void)
 {
     ips200_show_string(8  ,0  , "[DEBUG]-MT9V03x");
     ips200_show_string(0  ,16 , "==============================");
+    // 图像显示空间
+    // 图像显示空间
+    // 图像显示空间
+    ips200_show_string(0  ,160, "Show(us):");
 }
 
 // [三级界面]MT9-Track调试界面    
@@ -88,6 +92,12 @@ void Debug_MT9_Track_UI(void)
 {
     ips200_show_string(8  ,0  , "[DEBUG]-MT9-Track");
     ips200_show_string(0  ,16 , "==============================");
+    // 图像显示空间
+    // 图像显示空间
+    // 图像显示空间
+    ips200_show_string(0  ,160, "Track(us):");
+    ips200_show_string(0  ,176, "Show(us):");
+    ips200_show_string(0  ,192, "Steer:");
 }
 /**********************************************************/
 /*----------------------------------------[E] 界面样式 [E]*/
@@ -715,7 +725,7 @@ int Debug_MT9V03x (void)
 
 
         /* 总钻风显示 */
-        if (Time_Count2 > 10)// 10 * 10 ms周期
+        if (Time_Count2 >= 10)// 10ms * 10 周期
         {
             Time_Count2 = 0;
 
@@ -723,7 +733,21 @@ int Debug_MT9V03x (void)
             if(mt9v03x_finish_flag)                              
             {
                 mt9v03x_finish_flag = 0;
-                ips200_displayimage03x(mt9v03x_image[0], MT9V03X_W, MT9V03X_H);
+
+                // 计时：测量图像传输耗时
+                timer_init(TIM_2, TIMER_US);
+                timer_start(TIM_2);
+
+                // 图像从 y=32 开始，避开顶部标题行
+                ips200_show_gray_image(0, 32,
+                    mt9v03x_image[0], MT9V03X_W, MT9V03X_H,
+                    MT9V03X_W, MT9V03X_H, 0);
+
+                uint16 show_us = timer_get(TIM_2);
+                timer_stop(TIM_2);
+
+                // 在图像下方显示耗时
+                ips200_show_uint(72, 160, show_us, 6);
             }
         }
     }
@@ -741,6 +765,7 @@ int Debug_MT9_Track     (void)
 {
     // 大概率会被覆盖显示,作为保留项目
     Debug_MT9_Track_UI();
+    
 
     while(1)
     {
@@ -758,13 +783,13 @@ int Debug_MT9_Track     (void)
         }
 
         
-        if (Time_Count1 > 10)// 10 * 10 ms周期
+        if (Time_Count1 >= 10)// 10ms * 10 周期
         {
             Time_Count1 = 0;
         }
 
         
-        if (Time_Count2 > 10)// 10 * 10 ms周期
+        if (Time_Count2 >= 10)// 10ms * 10 周期
         {
             Time_Count2 = 0;
 
@@ -773,17 +798,38 @@ int Debug_MT9_Track     (void)
             {
                 mt9v03x_finish_flag = 0;
 
+                // 计时1：测量赛道识别处理耗时
+                timer_init(TIM_2, TIMER_US);
+                timer_start(TIM_2);
+
                 // 执行赛道识别
                 TrackRecognition_Process();
 
-                // 显示灰度图像，然后在屏上叠加彩色赛道边界/中线
-                ips200_displayimage03x(mt9v03x_image[0], MT9V03X_W, MT9V03X_H);
-                TrackRecognition_DrawOverlay();
+                uint16 track_us = timer_get(TIM_2);
+                timer_stop(TIM_2);
+
+                // 计时2：测量图像显示耗时
+                timer_start(TIM_2);
+
+                // 图像从 y=32 开始，避开顶部标题行
+                ips200_show_gray_image(0, 32,
+                    mt9v03x_image[0], MT9V03X_W, MT9V03X_H,
+                    MT9V03X_W, MT9V03X_H, 0);
+
+                // 叠加赛道边界/中线（对齐图像偏移）
+                TrackRecognition_DrawOverlay(32);
+
+                uint16 show_us = timer_get(TIM_2);
+                timer_stop(TIM_2);
+
+                // 在图像下方显示耗时和转角
+                ips200_show_uint(80, 160, track_us, 6);
+                ips200_show_uint(72, 176, show_us, 6);
+                ips200_printf(48, 192, "%2.2f", g_track_result.steering_value);
             }
         }
     }
 }
-
 /**********************************************************/
 /*----------------------------------------[E] 调试逻辑 [E]*/
 /**********************************************************/

@@ -3,7 +3,7 @@
 
 #include "zf_common_headfile.h"
 
-// 外部接口：赛道识别结果结构体
+// 赛道识别结果结构体
 typedef struct
 {
     int16 left_boundary[MT9V03X_H];         // 每行的左边界 x 坐标 (-1 表示未找到)
@@ -18,6 +18,6 @@ extern TrackResult_t g_track_result;
 // 外部接口函数
 void TrackRecognition_Init        (void);
 void TrackRecognition_Process     (void);
-void TrackRecognition_DrawOverlay (void);
+void TrackRecognition_DrawOverlay (uint16 y_offset);
 
 #endif
