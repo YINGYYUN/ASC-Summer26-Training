@@ -70,7 +70,7 @@ static void draw_image_black_border(void)
 // 取消定义则正常运行大津法自适应阈值
 // ============================================================
 
-// #define OTSU_USE_FIXED_THRESHOLD  240   // 取消注释则使用固定阈值
+#define OTSU_USE_FIXED_THRESHOLD  240   // 取消注释则使用固定阈值
 
 #define GrayScale 256
 
@@ -136,8 +136,8 @@ static uint8 otsu_find_threshold(void)
         }
     }
 
-    // 有效性过滤：合法范围 90~130，否则沿用上一帧
-    if (threshold > 90 && threshold < 130)
+    // 有效性过滤：合法范围 90~250，否则沿用上一帧
+    if (threshold > 90 && threshold < 250)
         s_otsu_last_valid = threshold;
     else
         threshold = s_otsu_last_valid;
@@ -428,22 +428,28 @@ static void draw_row_overlay(int16 row, uint16 y_offset)
     int16 center = g_track_result.center_line[row];
     uint16 y_screen = (uint16)row + y_offset;
 
+    // ROW_STEP=2 的采样间隙用 y+1 填补，使显示连续
     if (left >= 0 && left + 1 < IMG_W)
     {
-        ips200_draw_point(left,     y_screen, RGB565_RED);
-        ips200_draw_point(left + 1, y_screen, RGB565_RED);
+        ips200_draw_point(left,     y_screen,     RGB565_RED);
+        ips200_draw_point(left + 1, y_screen,     RGB565_RED);
+        ips200_draw_point(left,     y_screen + 1, RGB565_RED);
+        ips200_draw_point(left + 1, y_screen + 1, RGB565_RED);
     }
 
     if (right >= 0 && right + 1 < IMG_W)
     {
-        ips200_draw_point(right,     y_screen, RGB565_BLUE);
-        ips200_draw_point(right + 1, y_screen, RGB565_BLUE);
+        ips200_draw_point(right,     y_screen,     RGB565_BLUE);
+        ips200_draw_point(right + 1, y_screen,     RGB565_BLUE);
+        ips200_draw_point(right,     y_screen + 1, RGB565_BLUE);
+        ips200_draw_point(right + 1, y_screen + 1, RGB565_BLUE);
     }
 
     if (center >= 0 && center < IMG_W
         && left >= 0 && right >= 0)
     {
-        ips200_draw_point(center, y_screen, RGB565_GREEN);
+        ips200_draw_point(center, y_screen,     RGB565_GREEN);
+        ips200_draw_point(center, y_screen + 1, RGB565_GREEN);
     }
 }
 
