@@ -103,6 +103,7 @@ static uint8 otsu_find_threshold(void)
 #define OTSU_COL_SAMPLE_STEP  5
 #define HALF_WIDTH_FALLBACK   90
 #define DRAW_YS_MAX           271
+#define DRAW_WIDTH            1    // 边界绘制宽度 1~3
 
 static int16 otsu_longest_white_col(void)
 {
@@ -270,36 +271,37 @@ static void draw_row_overlay(int16 row, uint16 y_offset)
     uint16 ys = (uint16)row + y_offset;
     uint8 draw2 = (ys + 1 < DRAW_YS_MAX);
 
-    if (left >= 0 && left + 2 < IMG_W)
-    {
+#if DRAW_WIDTH == 1
+    if (left >= 0 && left < IMG_W)
         ips200_draw_point(left, ys, RGB565_RED);
-        ips200_draw_point(left + 1, ys, RGB565_RED);
-        ips200_draw_point(left + 2, ys, RGB565_RED);
-        if (draw2)
-        {
-            ips200_draw_point(left,     ys + 1, RGB565_RED);
-            ips200_draw_point(left + 1, ys + 1, RGB565_RED);
-            ips200_draw_point(left + 2, ys + 1, RGB565_RED);
-        }
-    }
-    if (right >= 0 && right + 2 < IMG_W)
-    {
+    if (right >= 0 && right < IMG_W)
         ips200_draw_point(right, ys, RGB565_BLUE);
-        ips200_draw_point(right + 1, ys, RGB565_BLUE);
-        ips200_draw_point(right + 2, ys, RGB565_BLUE);
-        if (draw2)
+    if (center >= 0 && center < IMG_W && (left >= 0 || right >= 0))
+        ips200_draw_point(center, ys, RGB565_GREEN);
+#else
+    if (left >= 0 && left + DRAW_WIDTH - 1 < IMG_W)
+    {
+        for (int16 w = 0; w < DRAW_WIDTH; w++)
         {
-            ips200_draw_point(right,     ys + 1, RGB565_BLUE);
-            ips200_draw_point(right + 1, ys + 1, RGB565_BLUE);
-            ips200_draw_point(right + 2, ys + 1, RGB565_BLUE);
+            ips200_draw_point(left + w, ys, RGB565_RED);
+            if (draw2) ips200_draw_point(left + w, ys + 1, RGB565_RED);
         }
     }
-    if (center >= 1 && center + 1 < IMG_W && (left >= 0 || right >= 0))
+    if (right >= 0 && right + DRAW_WIDTH - 1 < IMG_W)
     {
-        ips200_draw_point(center - 1, ys, RGB565_GREEN);
-        ips200_draw_point(center,     ys, RGB565_GREEN);
-        ips200_draw_point(center + 1, ys, RGB565_GREEN);
+        for (int16 w = 0; w < DRAW_WIDTH; w++)
+        {
+            ips200_draw_point(right + w, ys, RGB565_BLUE);
+            if (draw2) ips200_draw_point(right + w, ys + 1, RGB565_BLUE);
+        }
     }
+    if (center >= DRAW_WIDTH / 2 && center + DRAW_WIDTH / 2 < IMG_W
+        && (left >= 0 || right >= 0))
+    {
+        for (int16 w = -DRAW_WIDTH / 2; w <= DRAW_WIDTH / 2; w++)
+            ips200_draw_point(center + w, ys, RGB565_GREEN);
+    }
+#endif
 }
 
 // ============================================================

@@ -17,7 +17,7 @@ int main_process(void)
     Time_Count2 = 0;
 
     // 基础的PWM占空比
-    int16_t pwm_base = 800;
+    int16_t pwm_base = 700;
     int16_t pwm_left  = 0;
     int16_t pwm_right = 0;
 
@@ -52,7 +52,7 @@ int main_process(void)
         }
 
 
-        if (Time_Count1 >= 5)// 10ms * 5 = 50ms 控制周期
+        if (Time_Count1 >= 1)// 10ms * 1 = 10ms 控制周期
         {
             Time_Count1 = 0;
 
@@ -92,7 +92,7 @@ int main_process(void)
         }
 
 
-        if (Time_Count2 >= 15)// 10ms * 15 = 100ms 显示周期
+        if (Time_Count2 >= 15)// 10ms * 15 = 150ms 显示周期
         {
             Time_Count2 = 0;
 
@@ -102,10 +102,10 @@ int main_process(void)
                 MT9V03X_W, MT9V03X_H, TrackRecognition_GetThreshold());
             TrackRecognition_DrawOverlay(32);
 
-            ips200_show_float(0, 160, g_track_result.steering_value, 6, 2);
-            ips200_show_uint (120, 160, g_track_result.valid_rows, 4);
-            ips200_show_uint (0,   176, g_track_result.left_lost_count, 4);
-            ips200_show_uint (120, 176, g_track_result.right_lost_count, 4);
+            // ips200_show_float(0, 160, g_track_result.steering_value, 6, 2);
+            // ips200_show_uint (120, 160, g_track_result.valid_rows, 4);
+            // ips200_show_uint (0,   176, g_track_result.left_lost_count, 4);
+            // ips200_show_uint (120, 176, g_track_result.right_lost_count, 4);
         }
 
     }

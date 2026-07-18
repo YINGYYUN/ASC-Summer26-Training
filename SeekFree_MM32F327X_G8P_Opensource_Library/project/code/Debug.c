@@ -803,24 +803,16 @@ int Debug_MT9_Track     (void)
         if (KEY_SHORT_PRESS == key_get_state(KEY_BACK))
         {
             key_clear_state(KEY_BACK);
-
             ips200_clear();
             // 返回上一级界面
             return 0;
         }
 
-        
-        if (Time_Count1 >= 10)// 10ms * 10 周期
+
+        if (Time_Count1 >= 1)// 10ms * 1 = 10ms 处理周期
         {
             Time_Count1 = 0;
-        }
 
-        
-        if (Time_Count2 >= 10)// 10ms * 10 周期
-        {
-            Time_Count2 = 0;
-
-            // ---- 图像数据读取 + 赛道识别 ----
             if(mt9v03x_finish_flag)
             {
                 mt9v03x_finish_flag = 0;
@@ -835,26 +827,29 @@ int Debug_MT9_Track     (void)
                 uint16 track_us = timer_get(TIM_2);
                 timer_stop(TIM_2);
 
-                // 计时2：测量图像显示耗时
-                timer_start(TIM_2);
-
-                // 图像从 y=32 开始，避开顶部标题行
-                // 传入当前 Otsu 阈值显示二值化图像，与算法看到的完全一致
-                ips200_show_gray_image(0, 32,
-                    mt9v03x_image[0], MT9V03X_W, MT9V03X_H,
-                    MT9V03X_W, MT9V03X_H, TrackRecognition_GetThreshold());
-
-                // 叠加赛道边界/中线（对齐图像偏移）
-                TrackRecognition_DrawOverlay(32);
-
-                uint16 show_us = timer_get(TIM_2);
-                timer_stop(TIM_2);
-
-                // 在图像下方显示耗时和转角
+                // 缓存耗时，显示周期用
                 ips200_show_uint(80, 160, track_us, 6);
-                ips200_show_uint(72, 176, show_us, 6);
-                ips200_printf(48, 192, "%2.2f", g_track_result.steering_value);
             }
+        }
+
+
+        if (Time_Count2 >= 15)// 10ms * 15 = 150ms 显示周期
+        {
+            Time_Count2 = 0;
+
+            timer_init(TIM_2, TIMER_US);
+            timer_start(TIM_2);
+
+            ips200_show_gray_image(0, 32,
+                mt9v03x_image[0], MT9V03X_W, MT9V03X_H,
+                MT9V03X_W, MT9V03X_H, TrackRecognition_GetThreshold());
+            TrackRecognition_DrawOverlay(32);
+
+            uint16 show_us = timer_get(TIM_2);
+            timer_stop(TIM_2);
+
+            ips200_show_uint(72, 176, show_us, 6);
+            ips200_printf(48, 192, "%2.2f", g_track_result.steering_value);
         }
     }
 }

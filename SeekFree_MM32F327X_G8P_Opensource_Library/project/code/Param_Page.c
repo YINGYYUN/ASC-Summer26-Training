@@ -28,7 +28,7 @@ static void param_page_init(void)
     // ---------- 转向控制 PPDD ---------- 
     Menu_Item *folder_m3 = DynamicCreate_Menu_Folder(&head, "STEER_PPDD");
     DynamicCreate_Menu_LimitNumber(folder_m3, "KP" , &STEER_KP , float_Box, 0, 60);
-    DynamicCreate_Menu_LimitNumber(folder_m3, "KP2", &STEER_KP2, float_Box, 0, 10);
+    DynamicCreate_Menu_LimitNumber(folder_m3, "KP2", &STEER_KP2, float_Box, 0, 20);
     DynamicCreate_Menu_LimitNumber(folder_m3, "KD" , &STEER_KD , float_Box, 0, 20);
     DynamicCreate_Menu_LimitNumber(folder_m3, "GKD", &STEER_GKD, float_Box, 0, 20);
 
