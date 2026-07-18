@@ -126,6 +126,50 @@ void PID_INC_Update(PID_INC_t *p)
 	if (p->Out < p->OutMin) {p->Out = p->OutMin;}	// 限制输出值最小为结构体指定的OutMin
 }
 
+//--------------------------------------
+// 函数简介     转向控制中间量重置
+// 参数说明     STEER_CTRL_t *p	要传入的转向控制结构体变量名称
+// 使用示例     STEER_CTRL_Init(&Steer_Ctrl);
+// 备注信息     注意需要考虑多个调用位置
+//--------------------------------------
+void STEER_CTRL_Init(STEER_CTRL_t *p)
+{
+	p->Target = 0;
+	p->Actual = 0;
+	p->Gyro   = 0;
+	p->Out    = 0;
+	p->Error0 = 0;
+	p->Error1 = 0;
+}
+
+//--------------------------------------
+// 函数简介     转向控制计算（非线性PID + 陀螺仪前馈）
+// 参数说明     STEER_CTRL_t *p	要传入的转向控制结构体变量名称
+// 使用示例     STEER_CTRL_Update(&Steer_Ctrl);
+// 备注信息     
+//   公式: Out = Error*KP + Error*|Error|*KP2 + (Error-LastError)*KD + Gyro*GKD
+//   其中 Error = Target - Actual（图像偏差）
+//   KP2项为非线性项：偏差越大时修正力度增长越快（平方关系）
+//   调用前需更新 p->Target、p->Actual、p->Gyro
+//--------------------------------------
+void STEER_CTRL_Update(STEER_CTRL_t *p)
+{
+	/* 获取误差 */
+	p->Error1 = p->Error0;					// Error0 → Error1（保存上次误差）
+	p->Error0 = p->Target - p->Actual;		// 目标值 - 实际值 = 此次误差（图像偏差）
+	
+	/* 转向控制计算 */
+	// 转角 = 偏差*KP + 偏差*|偏差|*KP2 + (偏差-上次偏差)*KD + 陀螺仪*GKD
+	p->Out = p->Error0 * p->KP
+		   + p->Error0 * fabs(p->Error0) * p->KP2
+		   + (p->Error0 - p->Error1) * p->KD
+		   + p->Gyro * p->GKD;
+	
+	/* 输出限幅 */
+	if (p->Out > p->OutMax) {p->Out = p->OutMax;}	// 限制输出值最大为结构体指定的OutMax
+	if (p->Out < p->OutMin) {p->Out = p->OutMin;}	// 限制输出值最小为结构体指定的OutMin
+}
+
 /**********************************************************/
 /*----------------------------------------[E] 基础函数 [E]*/
 /**********************************************************/
@@ -153,6 +197,20 @@ PID_INC_t Motor_2_PID = {
 	.OutMin      = -5000,				// 输出限幅（下限）
 	.OutDeltaMax =   400,				// 单次增量变化上限（≈4%占空比）
 };
+
+// 转向控制
+STEER_CTRL_t Steer_Ctrl_PPDD = {
+    .OutMax =  1000,
+    .OutMin = -1000,
+};
+
+// 重置PID的所有中间量
+void PID_ALL_Init(void)
+{
+	PID_INC_Init(&Motor_1_PID);    
+    PID_INC_Init(&Motor_2_PID);
+	STEER_CTRL_Init(&Steer_Ctrl_PPDD);
+}
 
 /**********************************************************/
 /*----------------------------------------[E] PID实例 [E]*/

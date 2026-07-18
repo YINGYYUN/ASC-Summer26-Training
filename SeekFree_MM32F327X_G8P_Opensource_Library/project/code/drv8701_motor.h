@@ -20,9 +20,10 @@ DRV8701 电机驱动
 
 
 // 电机驱动引脚初始化
-void Motor_init          (void);
+void    Motor_init                  (void);
 // 设置duty,范围-10000~10000
-void Motor_Set      (uint8 motor, int16 duty);
-
+void    Motor_Set                   (uint8 motor, int16 duty);
+// 电机速度归零
+void    Motor_ALL_Zero              (void);
 
 #endif

@@ -31,11 +31,11 @@ extern float param_cache[PARAM_COUNT];
 #define MOTOR2_KI_IDX       4
 #define MOTOR2_KD_IDX       5
 
-// 预留扩展位(6-9) —— 示例: 转角环只需 Kp1, Kp2, Kd
-// #define STEER_KP1_IDX    6
-// #define STEER_KP2_IDX    7
-// #define STEER_KD_IDX     8
-// #define STEER_ENABLE_IDX 9
+// Steer_Ctrl_PPDD 转向控制
+#define STEER_KP_IDX        6
+#define STEER_KP2_IDX       7
+#define STEER_KD_IDX        8
+#define STEER_GKD_IDX       9
 
 
 // 便捷访问宏
@@ -46,6 +46,11 @@ extern float param_cache[PARAM_COUNT];
 #define MOTOR2_KP   param_cache[MOTOR2_KP_IDX]
 #define MOTOR2_KI   param_cache[MOTOR2_KI_IDX]
 #define MOTOR2_KD   param_cache[MOTOR2_KD_IDX]
+
+#define STEER_KP    param_cache[STEER_KP_IDX]
+#define STEER_KP2   param_cache[STEER_KP2_IDX]
+#define STEER_KD    param_cache[STEER_KD_IDX]
+#define STEER_GKD   param_cache[STEER_GKD_IDX]
 
 
 void    Param_Init          (void);     // 初始化(加载或设默认值)

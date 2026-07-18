@@ -53,3 +53,10 @@ void Motor_Set (uint8 motor, int16 duty)
 
     pwm_set_duty(pwm_ch, (uint16)duty);
 }
+
+// 电机速度归零
+void Motor_ALL_Zero(void)
+{
+    Motor_Set(1,0);
+    Motor_Set(2,0);
+}

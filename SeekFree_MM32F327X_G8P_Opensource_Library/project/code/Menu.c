@@ -37,6 +37,9 @@ void Peripheral_Init(void)
 
     // 初始化flash参数存储
     Param_Init();
+
+    // 初始化IMU963RA
+    imu963ra_init();
 }
 
 
@@ -115,7 +118,7 @@ void Menu_Show(void)
         if (menu_flag_temp == 1)
         {
             ips200_clear();
-
+            main_process();
 
             // 从Process界面返回，显示主菜单界面
             ips200_clear();

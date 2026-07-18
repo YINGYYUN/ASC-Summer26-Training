@@ -24,6 +24,7 @@ void Debug_Page_Menu_UI(uint8_t Page)
 			ips200_show_string(10 ,64 , "Motor_PID");       // 速度环
             ips200_show_string(10 ,80 , "MT9V03x");         // 总钻风图像显示
             ips200_show_string(10 ,96 , "MT9-Track");       // 赛道识别
+            ips200_show_string(10 ,112, "IMU-Ori");       // IMU963RA原始数据查看
 		
 			break;
 	}
@@ -99,6 +100,25 @@ void Debug_MT9_Track_UI(void)
     ips200_show_string(0  ,176, "Show(us):");
     ips200_show_string(0  ,192, "Steer:");
 }
+
+// [三级界面]IMU963RA原始数据查看界面
+void Debug_IMU_Ori_UI(void)
+{
+    ips200_show_string(8  ,0  , "[DEBUG]-IMU_Ori");
+    ips200_show_string(0  ,16 , "==============================");
+    // 空行
+    ips200_show_string(0  ,48 , "ax:#");
+    ips200_show_string(0  ,64 , "ay:#");
+    ips200_show_string(0  ,80 , "az:#");
+    // 空行
+    ips200_show_string(0  ,112, "gx:#");
+    ips200_show_string(0  ,128, "gy:#");
+    ips200_show_string(0  ,144, "gz:#");
+    // 空行
+    ips200_show_string(0  ,176, "mx:#");
+    ips200_show_string(0  ,192, "my:#");
+    ips200_show_string(0  ,208, "mz:#");
+}
 /**********************************************************/
 /*----------------------------------------[E] 界面样式 [E]*/
 /**********************************************************/
@@ -114,6 +134,7 @@ int Debug_Motor         (void);
 int Debug_Motor_PID     (void);
 int Debug_MT9V03x       (void);
 int Debug_MT9_Track     (void);
+int Debug_IMU_Ori       (void);
 
 
 // [二级界面]Debug模式界面
@@ -139,14 +160,14 @@ int Debug_Page_Menu(void)
             key_clear_state(KEY_UP);
             key_pressed = 1;
             Debug_Page_flag --;
-            if (Debug_Page_flag < 1)Debug_Page_flag = 5;
+            if (Debug_Page_flag < 1)Debug_Page_flag = 6;
         }
         else if (KEY_SHORT_PRESS == key_get_state(KEY_DOWN))
         {
             key_clear_state(KEY_DOWN); 
             key_pressed = 1;
             Debug_Page_flag ++;
-            if (Debug_Page_flag > 5)Debug_Page_flag = 1;
+            if (Debug_Page_flag > 6)Debug_Page_flag = 1;
         }
         else if (KEY_SHORT_PRESS == key_get_state(KEY_CONFIRM))
         {
@@ -212,6 +233,16 @@ int Debug_Page_Menu(void)
             Debug_Page_Menu_UI(1);
             ips200_show_string(0  ,96 , ">");
         }
+        else if (Debug_Page_flag_temp == 6)
+        {
+            ips200_clear();
+            Debug_IMU_Ori();
+            
+            // 从子界面返回后
+            ips200_clear();
+            Debug_Page_Menu_UI(1);
+            ips200_show_string(0  ,112, ">");
+        }
 
         
         /* 显示更新*/
@@ -223,6 +254,7 @@ int Debug_Page_Menu(void)
 			ips200_show_string(0  ,64 , " ");
 			ips200_show_string(0  ,80 , " ");
 			ips200_show_string(0  ,96 , " ");
+            ips200_show_string(0  ,112, " ");
 			// 显示光标
 			ips200_show_string(0  ,16 + 16*Debug_Page_flag , ">");
         }
@@ -273,6 +305,10 @@ int Debug_UART(void)
 
     tx_buf[0] = '\0';
     rx_disp[0] = '\0';
+
+    // 参考计时值重置
+    Time_Count1 = 0;
+    Time_Count2 = 0;
 
     while(1)
     {
@@ -344,8 +380,7 @@ int Debug_Motor (void)
 {
     // 电机驱动相关,为方便调用元素数量为3
     int16_t pwm[3] = {0};
-    Motor_Set(1,0);
-    Motor_Set(2,0);
+    Motor_ALL_Zero();
 
     // 编码器相关,为方便调用元素数量为3
     int32_t enc_cur[3] = {0};
@@ -397,8 +432,7 @@ int Debug_Motor (void)
         {
             key_clear_state(KEY_BACK);
 
-            Motor_Set(1,0);
-            Motor_Set(2,0);
+            Motor_ALL_Zero();
             // 返回上一级界面
             return 0;
         }
@@ -501,27 +535,15 @@ int Debug_Motor_PID (void)
 {
     // PID期望值相关,为方便调用元素数量为3
     int16_t enc_tar[3] = {0};
-    // 重置中间量
-    PID_INC_Init(&Motor_1_PID);    
-    PID_INC_Init(&Motor_2_PID);
-
-    // // 暂时方法,有其他替代方法时，需要注意此处的直接赋值
-    // Motor_1_PID.Kp = 25;
-    // Motor_1_PID.Ki = 2;
-    // Motor_1_PID.Kd = 8;
-
-    // Motor_2_PID.Kp = 25;
-    // Motor_2_PID.Ki = 2;
-    // Motor_2_PID.Kd = 8;
+    // 重置PID中间量
+    PID_ALL_Init();
+    // 电机速度重置
+    Motor_ALL_Zero();
 
     // 编码器相关,为方便调用元素数量为3
     int16_t enc_cur[3] = {0};
     ENC1_CLEAR();
     ENC2_CLEAR();
-
-    // 电机速度重置
-    Motor_Set(1,0);
-    Motor_Set(2,0);
 
     // 参考计时值重置
     Time_Count1 = 0;
@@ -567,11 +589,10 @@ int Debug_Motor_PID (void)
         {
             key_clear_state(KEY_BACK);
 
-            // 各项重置
-            PID_INC_Init(&Motor_1_PID);    
-            PID_INC_Init(&Motor_2_PID);
-            Motor_Set(1,0);
-            Motor_Set(2,0);
+            // 重置PID中间量
+            PID_ALL_Init();
+            // 电机速度重置
+            Motor_ALL_Zero();
             // 返回上一级界面
             return 0;
         }
@@ -708,6 +729,10 @@ int Debug_MT9V03x (void)
     // 大概率会被覆盖显示,作为保留项目
     Debug_MT9V03x_UI();
 
+    // 参考计时值重置
+    Time_Count1 = 0;
+    Time_Count2 = 0;
+
     while(1)
     {
         /* 按键处理 */
@@ -765,7 +790,10 @@ int Debug_MT9_Track     (void)
 {
     // 大概率会被覆盖显示,作为保留项目
     Debug_MT9_Track_UI();
-    
+
+    // 参考计时值重置
+    Time_Count1 = 0;
+    Time_Count2 = 0;
 
     while(1)
     {
@@ -828,6 +856,66 @@ int Debug_MT9_Track     (void)
                 ips200_show_uint(72, 176, show_us, 6);
                 ips200_printf(48, 192, "%2.2f", g_track_result.steering_value);
             }
+        }
+    }
+}
+
+//  #####  #   #  #   #          ###   ####   #####  
+//    #    ## ##  #   #         #   #  #   #    #    
+//    #    # # #  #   #  #####  #   #  ####     #    
+//    #    #   #  #   #         #   #  #  #     #    
+//  #####  #   #   ###           ###   #   #  #####  
+//
+// [三级界面]IMU963RA原始数据查看界面
+int Debug_IMU_Ori (void)
+{
+    Debug_IMU_Ori_UI();
+
+    // 参考计时值重置
+    Time_Count1 = 0;
+    Time_Count2 = 0;
+
+    while(1)
+    {
+        /* 按键处理 */
+        key_clear_state(KEY_UP); // 仅消费标志位
+        key_clear_state(KEY_DOWN); // 仅消费标志位
+        key_clear_state(KEY_CONFIRM); // 仅消费标志位
+        if (KEY_SHORT_PRESS == key_get_state(KEY_BACK))
+        {
+            key_clear_state(KEY_BACK);
+
+            ips200_clear();
+            // 返回上一级界面
+            return 0;
+        }
+
+
+        if (Time_Count1 >= 5)// 10ms * 5 周期
+        {
+            Time_Count1 = 0;
+
+            imu963ra_get_acc();
+            imu963ra_get_gyro();
+            imu963ra_get_mag();
+        }
+
+        
+        if (Time_Count2 >= 10)// 10ms * 10 周期
+        {
+            Time_Count2 = 0;
+
+            ips200_printf(24 ,48 , "%d   ", imu963ra_acc_x);
+            ips200_printf(24 ,64 , "%d   ", imu963ra_acc_y);
+            ips200_printf(24 ,80 , "%d   ", imu963ra_acc_z);
+
+            ips200_printf(24 ,112, "%d   ", imu963ra_gyro_x);
+            ips200_printf(24 ,128, "%d   ", imu963ra_gyro_y);
+            ips200_printf(24 ,144, "%d   ", imu963ra_gyro_z);
+
+            ips200_printf(24 ,176, "%d   ", imu963ra_mag_x);
+            ips200_printf(24 ,192, "%d   ", imu963ra_mag_y);
+            ips200_printf(24 ,208, "%d   ", imu963ra_mag_z);
         }
     }
 }

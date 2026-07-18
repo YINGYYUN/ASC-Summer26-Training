@@ -323,6 +323,12 @@ static void search_boundaries(void)
     int16 lr = BOTTOM_ROW, lc = bot_l, ld = 6;   // 左边界初始方向 = 6 (左)
     int16 rr = BOTTOM_ROW, rc = bot_r, rd = 2;   // 右边界初始方向 = 2 (右)
 
+    // 丢线追踪：从底部向上首次出现 -1 的行号
+    // 未丢线返回-1
+    // 丢线返回行号
+    int16 left_lost_from  = (bot_l >= 0) ? -1 : BOTTOM_ROW;
+    int16 right_lost_from = (bot_r >= 0) ? -1 : BOTTOM_ROW;
+
     for (int16 row = BOTTOM_ROW - 1; row >= 0; row -= ROW_STEP)
     {
         g_track_result.left_boundary[row]  = -1;
@@ -352,6 +358,10 @@ static void search_boundaries(void)
         if (rr > row) rc = -1;
         g_track_result.right_boundary[row] = rc;
 
+        // 顺手记录首次丢线行号
+        if (left_lost_from  < 0 && lc < 0) left_lost_from  = row;
+        if (right_lost_from < 0 && rc < 0) right_lost_from = row;
+
         // 中线计算
         int16 l = g_track_result.left_boundary[row];
         int16 r = g_track_result.right_boundary[row];
@@ -370,6 +380,13 @@ static void search_boundaries(void)
             g_track_result.center_line[row] = r - 90;
         }
     }
+
+    // 写入丢线统计
+    g_track_result.left_lost_from   = left_lost_from;
+    g_track_result.right_lost_from  = right_lost_from;
+    // 换算丢线与图像底部的距离
+    g_track_result.left_lost_count  = (left_lost_from  >= 0) ? (uint16)(BOTTOM_ROW - left_lost_from)  : 0;
+    g_track_result.right_lost_count = (right_lost_from >= 0) ? (uint16)(BOTTOM_ROW - right_lost_from) : 0;
 }
 
 // ============================================================
@@ -473,6 +490,10 @@ void TrackRecognition_Init(void)
     }
     g_track_result.steering_value = 0.0f;
     g_track_result.valid_rows     = 0;
+    g_track_result.left_lost_from  = -1;
+    g_track_result.right_lost_from = -1;
+    g_track_result.left_lost_count = 0;
+    g_track_result.right_lost_count = 0;
 }
 
 void TrackRecognition_Process(void)

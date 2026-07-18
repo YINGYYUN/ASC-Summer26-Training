@@ -142,6 +142,7 @@ extern uint16 Time_Count2;
 #include "common_menu.h"
 #include "Param_Page.h"
 #include "Param_Storage.h"
+#include "process.h"
 //===================================================用户自定义文件===================================================
 
 #endif

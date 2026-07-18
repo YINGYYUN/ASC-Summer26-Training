@@ -494,6 +494,16 @@
               <FileType>5</FileType>
               <FilePath>..\code\Param_Storage.h</FilePath>
             </File>
+            <File>
+              <FileName>process.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\code\process.c</FilePath>
+            </File>
+            <File>
+              <FileName>process.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\code\process.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
