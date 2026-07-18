@@ -374,8 +374,8 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>..\code\TrackRecognition.c</PathWithFileName>
-      <FilenameWithoutPath>TrackRecognition.c</FilenameWithoutPath>
+      <PathWithFileName>..\code\Track_sweep.c</PathWithFileName>
+      <FilenameWithoutPath>Track_sweep.c</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>

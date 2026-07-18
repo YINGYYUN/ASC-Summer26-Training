@@ -17,7 +17,7 @@ int main_process(void)
     Time_Count2 = 0;
 
     // 基础的PWM占空比
-    int16_t pwm_base = 1000;
+    int16_t pwm_base = 800;
     int16_t pwm_left  = 0;
     int16_t pwm_right = 0;
 
@@ -27,7 +27,6 @@ int main_process(void)
         if (KEY_SHORT_PRESS == key_get_state(KEY_UP))
         {
             key_clear_state(KEY_UP);
-
         }
         if (KEY_SHORT_PRESS == key_get_state(KEY_DOWN))
         {

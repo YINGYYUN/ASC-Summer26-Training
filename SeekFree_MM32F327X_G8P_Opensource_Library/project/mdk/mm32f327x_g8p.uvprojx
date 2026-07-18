@@ -327,7 +327,7 @@
             <uThumb>0</uThumb>
             <uSurpInc>0</uSurpInc>
             <uC99>1</uC99>
-            <uGnu>1</uGnu>
+            <uGnu>0</uGnu>
             <useXO>0</useXO>
             <v6Lang>3</v6Lang>
             <v6LangP>3</v6LangP>
@@ -455,9 +455,9 @@
               <FilePath>..\code\pid.h</FilePath>
             </File>
             <File>
-              <FileName>TrackRecognition.c</FileName>
+              <FileName>Track_sweep.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\code\TrackRecognition.c</FilePath>
+              <FilePath>..\code\Track_sweep.c</FilePath>
             </File>
             <File>
               <FileName>TrackRecognition.h</FileName>
@@ -1330,14 +1330,5 @@
     <components/>
     <files/>
   </RTE>
-
-  <LayerInfo>
-    <Layers>
-      <Layer>
-        <LayName>mm32f327x_g8p</LayName>
-        <LayPrjMark>1</LayPrjMark>
-      </Layer>
-    </Layers>
-  </LayerInfo>
 
 </Project>
