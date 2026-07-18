@@ -53,41 +53,60 @@ int main_process(void)
         }
 
 
-        if (Time_Count1 >= 10)// 10ms * 5 周期
+        if (Time_Count1 >= 5)// 10ms * 5 = 50ms 控制周期
         {
             Time_Count1 = 0;
 
-            // ---- 图像数据读取 + 赛道识别 ----
+            // ---- 赛道识别 ----
             if(mt9v03x_finish_flag)
             {
                 mt9v03x_finish_flag = 0;
-
-                // 执行赛道识别
                 TrackRecognition_Process();
             }
+
             imu963ra_get_gyro();
 
-            Steer_Ctrl_PPDD.Target = 0;              // 目标：中线
-            Steer_Ctrl_PPDD.Actual = g_track_result.steering_value;
-            Steer_Ctrl_PPDD.Gyro   = imu963ra_gyro_z; 
+            // 丢线保护：双侧大范围丢线时只用陀螺仪维持姿态
+            if (g_track_result.left_lost_count > 20
+                && g_track_result.right_lost_count > 20)
+            {
+                Steer_Ctrl_PPDD.Target = 0;
+                Steer_Ctrl_PPDD.Actual = 0;
+            }
+            else
+            {
+                Steer_Ctrl_PPDD.Target = 0;
+                Steer_Ctrl_PPDD.Actual = g_track_result.steering_value * 20.0f;
+            }
+            Steer_Ctrl_PPDD.Gyro = imu963ra_gyro_z;
             STEER_CTRL_Update(&Steer_Ctrl_PPDD);
 
-            pwm_left  = pwm_base + (int16_t)Steer_Ctrl_PPDD.Out;
-            pwm_right = pwm_base - (int16_t)Steer_Ctrl_PPDD.Out;
-            if (2000 <= pwm_left){pwm_left = 2000;}
-            if (pwm_left <= -2000){pwm_left = -2000;}
-            if (2000 <= pwm_right){pwm_right = 2000;}
-            if (pwm_right <= -2000){pwm_right = -2000;}
+            pwm_left  = pwm_base - (int16_t)Steer_Ctrl_PPDD.Out;
+            pwm_right = pwm_base + (int16_t)Steer_Ctrl_PPDD.Out;
+            if (2000 <= pwm_left)  { pwm_left  =  2000; }
+            if (pwm_left <= -2000) { pwm_left  = -2000; }
+            if (2000 <= pwm_right) { pwm_right =  2000; }
+            if (pwm_right <= -2000){ pwm_right = -2000; }
 
-            Motor_Set(1 ,pwm_left);
-            Motor_Set(2 ,pwm_right);
+            Motor_Set(1, pwm_left);
+            Motor_Set(2, pwm_right);
         }
 
-        
-        if (Time_Count2 >= 10)// 10ms * 10 周期
+
+        if (Time_Count2 >= 15)// 10ms * 15 = 100ms 显示周期
         {
             Time_Count2 = 0;
 
+            // 不消费 finish_flag，直接显示（可能比控制周期旧一帧，不影响调试）
+            ips200_show_gray_image(0, 32,
+                mt9v03x_image[0], MT9V03X_W, MT9V03X_H,
+                MT9V03X_W, MT9V03X_H, TrackRecognition_GetThreshold());
+            TrackRecognition_DrawOverlay(32);
+
+            ips200_show_float(0, 160, g_track_result.steering_value, 6, 2);
+            ips200_show_uint (120, 160, g_track_result.valid_rows, 4);
+            ips200_show_uint (0,   176, g_track_result.left_lost_count, 4);
+            ips200_show_uint (120, 176, g_track_result.right_lost_count, 4);
         }
 
     }

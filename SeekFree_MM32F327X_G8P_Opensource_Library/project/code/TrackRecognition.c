@@ -2,7 +2,7 @@
  * 赛道识别模块
  * 八邻域：追踪黑像素的黑→白跳变，多候选取最高，防卡死
  * 坐标系：image[0]=远处(顶)，image[119]=近处(底)
- * 流程：画黑框 → Otsu阈值 → 最长白列种子 → 底部边界 → 八邻域追黑边 → 边线提取
+ * 流程：画黑框 → 固定阈值/OTSU可切换 → 最长白列种子 → 底部边界 → 八邻域追黑边 → 边线提取
  *******************************************************************************/
 
 #include "TrackRecognition.h"
@@ -16,6 +16,8 @@
 #define IMG_CENTER            (IMG_W / 2)
 #define BOTTOM_ROW            (IMG_H - 1)
 #define OTSU_COL_SAMPLE_STEP  (5)
+#define HALF_WIDTH_FALLBACK   90          // 单边丢线时赛道半宽估计
+#define DRAW_YS_MAX           (271)        // 屏幕最大 Y 坐标（320-48-1 留底）
 
 // ============================================================
 // 全局 & 内部状态
@@ -23,8 +25,6 @@
 
 TrackResult_t g_track_result;
 
-static int16  s_prev_left[IMG_H];
-static int16  s_prev_right[IMG_H];
 static uint8  s_frame_count = 0;
 static uint8  s_otsu_threshold = 128;
 static uint8  s_otsu_last_valid = 128;
@@ -53,13 +53,14 @@ static void draw_image_black_border(void)
 // OTSU 阈值
 // ============================================================
 
-#define OTSU_USE_FIXED_THRESHOLD  240
+#define THRESHOLD_MODE_FIXED   1    // 1:固定阈值  0:OTSU 自适应
+#define FIXED_THRESHOLD        240
 #define GrayScale 256
 
 static uint8 otsu_find_threshold(void)
 {
-#ifdef OTSU_USE_FIXED_THRESHOLD
-    return (uint8)OTSU_USE_FIXED_THRESHOLD;
+#if THRESHOLD_MODE_FIXED
+    return (uint8)FIXED_THRESHOLD;
 #else
     int Pixel_Max = 0, Pixel_Min = 255;
     static int pixelCount[GrayScale];
@@ -229,9 +230,13 @@ static void search_boundaries(void)
         g_track_result.center_line[i]    = IMG_CENTER;
     }
 
-    // OTSU 阈值
+    // 阈值
+#if THRESHOLD_MODE_FIXED
+    s_otsu_threshold = (uint8)FIXED_THRESHOLD;
+#else
     uint8 raw_th = otsu_find_threshold();
     s_otsu_threshold = (uint8)(((uint16)s_otsu_threshold * 7 + (uint16)raw_th * 3) / 10);
+#endif
 
     // 最长白列种子
     int16 seed = otsu_longest_white_col();
@@ -297,9 +302,9 @@ static void search_boundaries(void)
         if (l >= 0 && r >= 0)
         { g_track_result.center_line[row] = (l + r) / 2; g_track_result.valid_rows++; }
         else if (l >= 0)
-        { g_track_result.center_line[row] = l + 90; }
+        { g_track_result.center_line[row] = l + HALF_WIDTH_FALLBACK; }
         else if (r >= 0)
-        { g_track_result.center_line[row] = r - 90; }
+        { g_track_result.center_line[row] = r - HALF_WIDTH_FALLBACK; }
     }
 
     g_track_result.left_lost_count  = (g_track_result.left_lost_from  >= 0)
@@ -333,39 +338,37 @@ static void calc_steering_value(void)
     g_track_result.steering_value = (total_w > 0.0f) ? (total_dev / total_w) : 0.0f;
 }
 
-static void save_boundary_for_next_frame(void)
-{
-    for (int16 row = BOTTOM_ROW; row >= 0; row--)
-    {
-        s_prev_left[row]  = g_track_result.left_boundary[row];
-        s_prev_right[row] = g_track_result.right_boundary[row];
-    }
-}
-
 static void draw_row_overlay(int16 row, uint16 y_offset)
 {
     int16 left  = g_track_result.left_boundary[row];
     int16 right = g_track_result.right_boundary[row];
     int16 center = g_track_result.center_line[row];
     uint16 ys = (uint16)row + y_offset;
+    uint8 draw_second_row = (ys + 1 < DRAW_YS_MAX);
 
     if (left >= 0 && left + 2 < IMG_W)
     {
-        ips200_draw_point(left,     ys,     RGB565_RED);
-        ips200_draw_point(left + 1, ys,     RGB565_RED);
-        ips200_draw_point(left + 2, ys,     RGB565_RED);
-        ips200_draw_point(left,     ys + 1, RGB565_RED);
-        ips200_draw_point(left + 1, ys + 1, RGB565_RED);
-        ips200_draw_point(left + 2, ys + 1, RGB565_RED);
+        ips200_draw_point(left,     ys, RGB565_RED);
+        ips200_draw_point(left + 1, ys, RGB565_RED);
+        ips200_draw_point(left + 2, ys, RGB565_RED);
+        if (draw_second_row)
+        {
+            ips200_draw_point(left,     ys + 1, RGB565_RED);
+            ips200_draw_point(left + 1, ys + 1, RGB565_RED);
+            ips200_draw_point(left + 2, ys + 1, RGB565_RED);
+        }
     }
     if (right >= 0 && right + 2 < IMG_W)
     {
-        ips200_draw_point(right,     ys,     RGB565_BLUE);
-        ips200_draw_point(right + 1, ys,     RGB565_BLUE);
-        ips200_draw_point(right + 2, ys,     RGB565_BLUE);
-        ips200_draw_point(right,     ys + 1, RGB565_BLUE);
-        ips200_draw_point(right + 1, ys + 1, RGB565_BLUE);
-        ips200_draw_point(right + 2, ys + 1, RGB565_BLUE);
+        ips200_draw_point(right,     ys, RGB565_BLUE);
+        ips200_draw_point(right + 1, ys, RGB565_BLUE);
+        ips200_draw_point(right + 2, ys, RGB565_BLUE);
+        if (draw_second_row)
+        {
+            ips200_draw_point(right,     ys + 1, RGB565_BLUE);
+            ips200_draw_point(right + 1, ys + 1, RGB565_BLUE);
+            ips200_draw_point(right + 2, ys + 1, RGB565_BLUE);
+        }
     }
     if (center >= 1 && center + 1 < IMG_W && (left >= 0 || right >= 0))
     {
@@ -384,7 +387,6 @@ void TrackRecognition_Init(void)
     s_otsu_threshold = 128; s_otsu_last_valid = 128; s_frame_count = 0;
     for (int16 i = 0; i < IMG_H; i++)
     {
-        s_prev_left[i] = -1; s_prev_right[i] = -1;
         g_track_result.left_boundary[i]  = -1;
         g_track_result.right_boundary[i] = -1;
         g_track_result.center_line[i]    = IMG_CENTER;
@@ -399,7 +401,6 @@ void TrackRecognition_Process(void)
 {
     search_boundaries();
     calc_steering_value();
-    save_boundary_for_next_frame();
     s_frame_count++;
 }
 
