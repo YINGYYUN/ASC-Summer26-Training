@@ -15,15 +15,6 @@ typedef struct
     int16  right_lost_from;
     uint16 left_lost_count;
     uint16 right_lost_count;
-
-    // 原始搜线结果（补线前，供环岛等元素判断）
-    int16 left_boundary_raw[MT9V03X_H];
-    int16 right_boundary_raw[MT9V03X_H];
-
-    // 十字判定
-    uint8 is_crossroad;
-    int16 crossroad_start_row;
-    int16 crossroad_end_row;
 } TrackResult_t;
 
 extern TrackResult_t g_track_result;
