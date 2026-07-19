@@ -82,7 +82,7 @@ int main_process(void)
 
             // 速度分级：赛道偏差小 → 高速，偏差大 → 低速
             if (fabs(g_track_result.steering_value) < 1.5f)
-                pwm_base = 700;
+                pwm_base = 1000;
             else
                 pwm_base = 650;
 
