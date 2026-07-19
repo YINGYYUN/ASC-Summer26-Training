@@ -17,7 +17,7 @@ static const float DEFAULT_PARAMS[PARAM_COUNT] = {
     // Motor_2_PID
     25.0f, 0.0f, 0.0f,       // KP, KI, KD
     // Steer_Ctrl_PPDD
-    8.0f, 0.03f, 0.0f, 0.25,  // KP, KP2, KD, GKD
+    8.0f, 0.0f, 0.0f, 1.0f,  // KP, KP2, KD, GKD
 };
 
 // 参数缓存区(菜单直接修改此数组, Flash 读写也通过此数组)

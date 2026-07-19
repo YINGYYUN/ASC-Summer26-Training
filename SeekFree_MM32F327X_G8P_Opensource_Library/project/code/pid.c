@@ -200,8 +200,8 @@ PID_INC_t Motor_2_PID = {
 
 // 转向控制
 STEER_CTRL_t Steer_Ctrl_PPDD = {
-    .OutMax =  1000,
-    .OutMin = -1000,
+    .OutMax =  2000,
+    .OutMin = -2000,
 };
 
 // 重置PID的所有中间量

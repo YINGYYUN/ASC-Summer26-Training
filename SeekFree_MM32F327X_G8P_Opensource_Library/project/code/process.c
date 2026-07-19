@@ -4,6 +4,7 @@
 
 
 #include "zf_common_headfile.h"
+#include <math.h>
 
 int main_process(void)
 {
@@ -16,8 +17,7 @@ int main_process(void)
     Time_Count1 = 0;
     Time_Count2 = 0;
 
-    // 基础的PWM占空比
-    int16_t pwm_base = 700;
+    int16_t pwm_base = 0;
     int16_t pwm_left  = 0;
     int16_t pwm_right = 0;
 
@@ -80,12 +80,18 @@ int main_process(void)
             Steer_Ctrl_PPDD.Gyro = imu963ra_gyro_z;
             STEER_CTRL_Update(&Steer_Ctrl_PPDD);
 
+            // 速度分级：赛道偏差小 → 高速，偏差大 → 低速
+            if (fabs(g_track_result.steering_value) < 1.5f)
+                pwm_base = 700;
+            else
+                pwm_base = 650;
+
             pwm_left  = pwm_base - (int16_t)Steer_Ctrl_PPDD.Out;
             pwm_right = pwm_base + (int16_t)Steer_Ctrl_PPDD.Out;
-            if (2000 <= pwm_left)  { pwm_left  =  2000; }
-            if (pwm_left <= -2000) { pwm_left  = -2000; }
-            if (2000 <= pwm_right) { pwm_right =  2000; }
-            if (pwm_right <= -2000){ pwm_right = -2000; }
+            if (3000 <= pwm_left)  { pwm_left  =  3000; }
+            if (pwm_left <= -3000) { pwm_left  = -3000; }
+            if (3000 <= pwm_right) { pwm_right =  3000; }
+            if (pwm_right <= -3000){ pwm_right = -3000; }
 
             Motor_Set(1, pwm_left);
             Motor_Set(2, pwm_right);
@@ -102,10 +108,10 @@ int main_process(void)
                 MT9V03X_W, MT9V03X_H, TrackRecognition_GetThreshold());
             TrackRecognition_DrawOverlay(32);
 
-            // ips200_show_float(0, 160, g_track_result.steering_value, 6, 2);
-            // ips200_show_uint (120, 160, g_track_result.valid_rows, 4);
-            // ips200_show_uint (0,   176, g_track_result.left_lost_count, 4);
-            // ips200_show_uint (120, 176, g_track_result.right_lost_count, 4);
+            // 调试：观察赛道偏差和基础速度
+            ips200_show_float(0, 160, g_track_result.steering_value, 6, 2);
+            ips200_show_uint (120, 160, (uint16)pwm_base, 4);
+            ips200_show_float(0, 176, Steer_Ctrl_PPDD.Out, 6, 2);
         }
 
     }
