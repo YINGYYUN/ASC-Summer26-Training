@@ -147,7 +147,7 @@ void STEER_CTRL_Init(STEER_CTRL_t *p)
 // 参数说明     STEER_CTRL_t *p	要传入的转向控制结构体变量名称
 // 使用示例     STEER_CTRL_Update(&Steer_Ctrl);
 // 备注信息     
-//   公式: Out = Error*KP + Error*|Error|*KP2 + (Error-LastError)*KD + Gyro*GKD
+//   公式: Out = Error*KP + Error*|Error|*KP2 + (Error-LastError)*KD - Gyro*GKD
 //   其中 Error = Target - Actual（图像偏差）
 //   KP2项为非线性项：偏差越大时修正力度增长越快（平方关系）
 //   调用前需更新 p->Target、p->Actual、p->Gyro
@@ -159,11 +159,11 @@ void STEER_CTRL_Update(STEER_CTRL_t *p)
 	p->Error0 = p->Target - p->Actual;		// 目标值 - 实际值 = 此次误差（图像偏差）
 	
 	/* 转向控制计算 */
-	// 转角 = 偏差*KP + 偏差*|偏差|*KP2 + (偏差-上次偏差)*KD + 陀螺仪*GKD
+	// 转角 = 偏差*KP + 偏差*|偏差|*KP2 + (偏差-上次偏差)*KD - 陀螺仪*GKD
 	p->Out = p->Error0 * p->KP
 		   + p->Error0 * fabs(p->Error0) * p->KP2
 		   + (p->Error0 - p->Error1) * p->KD
-		   + p->Gyro * p->GKD;
+		   - p->Gyro * p->GKD;
 	
 	/* 输出限幅 */
 	if (p->Out > p->OutMax) {p->Out = p->OutMax;}	// 限制输出值最大为结构体指定的OutMax
