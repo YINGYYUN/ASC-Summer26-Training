@@ -120,6 +120,7 @@ static int16 otsu_longest_white_col(void)
 // 逐行扫描：底行从种子起扫，上行从上一行边界偏移起扫
 // ============================================================
 #define SWEEP_OFFSET  10   // 上行搜索起点向内偏移量
+#define EDGE_JUMP_THRESHOLD  25   // 边界跳变阈值，超过视为拐点
 
 static void sweep_boundaries(void)
 {
@@ -163,16 +164,12 @@ static void sweep_boundaries(void)
         }
         else
         {
-            // 起点在黑区（赛道变窄），从边界向内回找
-            l = prev_l;
-            while (l > 2 && mt9v03x_image[row][l] <= th) l--;
-            if (l > 2)
-            {
-                while (l > 2
-                    && !(mt9v03x_image[row][l - 1] <= th
-                      && mt9v03x_image[row][l - 2] <= th))
-                    l--;
-            }
+            // 起点在黑区，用全局最长白列 seed 重定位
+            l = seed;
+            while (l > 2
+                && !(mt9v03x_image[row][l - 1] <= th
+                  && mt9v03x_image[row][l - 2] <= th))
+                l--;
         }
 
         // 右边界：从 prev_r - OFFSET（向内移）向右扫
@@ -188,16 +185,12 @@ static void sweep_boundaries(void)
         }
         else
         {
-            // 起点在黑区（赛道变窄），从边界向内回找
-            r = prev_r;
-            while (r < IMG_W - 3 && mt9v03x_image[row][r] <= th) r++;
-            if (r < IMG_W - 3)
-            {
-                while (r < IMG_W - 3
-                    && !(mt9v03x_image[row][r + 1] <= th
-                      && mt9v03x_image[row][r + 2] <= th))
-                    r++;
-            }
+            // 起点在黑区，用全局最长白列 seed 重定位
+            r = seed;
+            while (r < IMG_W - 3
+                && !(mt9v03x_image[row][r + 1] <= th
+                  && mt9v03x_image[row][r + 2] <= th))
+                r++;
         }
 
         g_track_result.left_boundary[row]  = l;
@@ -234,6 +227,124 @@ static void sweep_boundaries(void)
         ? (uint16)(BOTTOM_ROW - g_track_result.left_lost_from)  : 0;
     g_track_result.right_lost_count = (g_track_result.right_lost_from >= 0)
         ? (uint16)(BOTTOM_ROW - g_track_result.right_lost_from) : 0;
+}
+
+// ============================================================
+// 拐点检测 + 十字判定 + 中线线性延申
+//
+// 方向性拐点定义（从底部向上扫描）：
+//   左边界：cur-prev < -THR → "左断崖" = 入十字（边界向外跳变到黑框）
+//          cur-prev > +THR → "右断崖" = 出十字（边界向内跳回赛道）
+//   右边界：cur-prev > +THR → "右断崖" = 入十字
+//          cur-prev < -THR → "左断崖" = 出十字
+//
+// 补线参考数据：取入十字拐点以下的直道段（BOTTOM_ROW → entry+margin）
+//               拟合左右边界在直道上的线性趋势，延申进十字段
+// ============================================================
+static void correct_crossroad_midline(int16 entry_row, int16 exit_row,
+                                      int16 l_entry, int16 r_entry)
+{
+    // ---- 左右边界线性拟合（基于入十字前的直道段，一趟遍历） ----
+    int16 n_l = 0, n_r = 0;
+    float srl = 0, scl = 0, srrl = 0, srcl = 0;
+    float srr2 = 0, scr = 0, srrr = 0, srcr = 0;
+
+    for (int16 row = BOTTOM_ROW; row >= entry_row + 5 && row >= 0; row--)
+    {
+        float r = (float)row;
+
+        if (g_track_result.left_boundary_raw[row] >= 0)
+        {
+            float c = (float)g_track_result.left_boundary_raw[row];
+            srl += r; scl += c; srrl += r * r; srcl += r * c;
+            n_l++;
+        }
+        if (g_track_result.right_boundary_raw[row] >= 0)
+        {
+            float c = (float)g_track_result.right_boundary_raw[row];
+            srr2 += r; scr += c; srrr += r * r; srcr += r * c;
+            n_r++;
+        }
+    }
+
+    if (n_l < 3 || n_r < 3) return;
+
+    float d_l = n_l * srrl - srl * srl;
+    float d_r = n_r * srrr - srr2 * srr2;
+    if (d_l == 0 || d_r == 0) return;
+
+    float slope_l = (n_l * srcl - srl * scl) / d_l;
+    float intc_l  = (scl - slope_l * srl) / n_l;
+    float slope_r = (n_r * srcr - srr2 * scr) / d_r;
+    float intc_r  = (scr - slope_r * srr2) / n_r;
+
+    // ---- 覆盖十字段：中线 = (左拟合 + 右拟合) / 2 ----
+    for (int16 row = entry_row; row >= exit_row; row--)
+    {
+        int16 fit_l = (int16)(slope_l * row + intc_l);
+        int16 fit_r = (int16)(slope_r * row + intc_r);
+        g_track_result.center_line[row] = (fit_l + fit_r) / 2;
+    }
+}
+
+static void detect_and_correct_crossroad(void)
+{
+    g_track_result.is_crossroad        = 0;
+    g_track_result.crossroad_start_row  = -1;
+    g_track_result.crossroad_end_row    = -1;
+
+    // 1. 保存原始搜线结果
+    for (int16 row = 0; row < IMG_H; row++)
+    {
+        g_track_result.left_boundary_raw[row]  = g_track_result.left_boundary[row];
+        g_track_result.right_boundary_raw[row] = g_track_result.right_boundary[row];
+    }
+
+    // 2. 方向性拐点扫描
+    //    左：负跳 = 入十字（首次记），正跳 = 出十字（持续更新取最远）
+    //    右：正跳 = 入十字（首次记），负跳 = 出十字（持续更新取最远）
+    int16 l_entry = -1, l_exit = -1;
+    int16 r_entry = -1, r_exit = -1;
+
+    int16 prev_l = g_track_result.left_boundary[BOTTOM_ROW];
+    int16 prev_r = g_track_result.right_boundary[BOTTOM_ROW];
+
+    for (int16 row = BOTTOM_ROW - 1; row >= 0; row--)
+    {
+        int16 cur_l = g_track_result.left_boundary[row];
+        int16 cur_r = g_track_result.right_boundary[row];
+
+        if (cur_l >= 0 && prev_l >= 0)
+        {
+            int16 dl = cur_l - prev_l;
+            if      (dl < -EDGE_JUMP_THRESHOLD && l_entry < 0) l_entry = row;
+            else if (dl >  EDGE_JUMP_THRESHOLD)                 l_exit  = row;
+        }
+        if (cur_r >= 0 && prev_r >= 0)
+        {
+            int16 dr = cur_r - prev_r;
+            if      (dr >  EDGE_JUMP_THRESHOLD && r_entry < 0) r_entry = row;
+            else if (dr < -EDGE_JUMP_THRESHOLD)                 r_exit  = row;
+        }
+
+        if (cur_l >= 0) prev_l = cur_l;
+        if (cur_r >= 0) prev_r = cur_r;
+    }
+
+    // 3. 十字判定：左右各有入/出拐点，且入点在下方（row更大）
+    if (l_entry >= 0 && l_exit >= 0 && r_entry >= 0 && r_exit >= 0)
+    {
+        int16 cs_entry = (l_entry > r_entry) ? l_entry : r_entry;  // 取离车最近的入点
+        int16 cs_exit  = (l_exit  < r_exit)  ? l_exit  : r_exit;   // 取离车最远的出点
+
+        if (cs_entry > cs_exit)   // 入点在出点下方 → 合法的十字段
+        {
+            g_track_result.is_crossroad        = 1;
+            g_track_result.crossroad_start_row  = cs_entry;
+            g_track_result.crossroad_end_row    = cs_exit;
+            correct_crossroad_midline(cs_entry, cs_exit, l_entry, r_entry);
+        }
+    }
 }
 
 // ============================================================
@@ -317,16 +428,22 @@ void TrackRecognition_Init(void)
     s_otsu_last_valid = 128;
 #endif
 
+    TrackResult_t *p = &g_track_result;
     for (int16 i = 0; i < IMG_H; i++)
     {
-        g_track_result.left_boundary[i]  = -1;
-        g_track_result.right_boundary[i] = -1;
-        g_track_result.center_line[i]    = IMG_CENTER;
+        p->left_boundary[i]     = -1;
+        p->right_boundary[i]    = -1;
+        p->center_line[i]       = IMG_CENTER;
+        p->left_boundary_raw[i] = -1;
+        p->right_boundary_raw[i]= -1;
     }
-    g_track_result.steering_value = 0.0f;
-    g_track_result.valid_rows = 0;
-    g_track_result.left_lost_from  = -1; g_track_result.right_lost_from = -1;
-    g_track_result.left_lost_count = 0;  g_track_result.right_lost_count = 0;
+    p->steering_value = 0.0f;
+    p->valid_rows     = 0;
+    p->left_lost_from  = -1; p->right_lost_from  = -1;
+    p->left_lost_count = 0;  p->right_lost_count = 0;
+    p->is_crossroad       = 0;
+    p->crossroad_start_row = -1;
+    p->crossroad_end_row   = -1;
 }
 
 void TrackRecognition_Process(void)
@@ -341,6 +458,7 @@ void TrackRecognition_Process(void)
 #endif
 
     sweep_boundaries();
+    detect_and_correct_crossroad();
     calc_steering_value();
 }
 
