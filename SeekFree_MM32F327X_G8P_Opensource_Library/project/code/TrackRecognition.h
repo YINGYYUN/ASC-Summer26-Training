@@ -19,9 +19,16 @@ typedef struct
 
 extern TrackResult_t g_track_result;
 
+// 出界保护 0=正常  1=出界
+uint8 check_offtrack_bottom_center(void);
+// 赛道识别初始化
 void  TrackRecognition_Init         (void);
+// 赛道识别进程
 void  TrackRecognition_Process      (void);
+// 绘制中线、边线(图像显示需要单独调用)
 void  TrackRecognition_DrawOverlay  (uint16 y_offset);
+// 获取当前二值化阈值
 uint8 TrackRecognition_GetThreshold (void);
+
 
 #endif

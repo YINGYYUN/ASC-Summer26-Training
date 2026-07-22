@@ -595,7 +595,7 @@ int Debug_Motor_PID (void)
             // 返回上一级界面
             return 0;
         }
-            
+
         
         /* 参数设置 */
         if (Debug_M_P_f_temp == 1 || Debug_M_P_f_temp == 2)
@@ -663,11 +663,12 @@ int Debug_Motor_PID (void)
                     ips200_printf(58 ,112, "%d  ", enc_cur[2]);
                     ips200_printf(58 ,128, "%d  ", (int16_t)Motor_1_PID.Out);
                     ips200_printf(58 ,144, "%d  ", (int16_t)Motor_2_PID.Out);
+					printf("%.1f,%.0f,%.0f\n", Motor_1_PID.Actual, Motor_1_PID.Target, Motor_1_PID.Out);
                 }
             }
         }
         
-            
+        
         /* 电机编码器读取 */
         if (Time_Count1 >= 2)// 10ms * 2 = 20ms 周期
         {
@@ -700,9 +701,10 @@ int Debug_Motor_PID (void)
             ips200_printf(58 ,112, "%d  ", enc_cur[2]);
             ips200_printf(58 ,128, "%d  ", (int16_t)Motor_1_PID.Out);
             ips200_printf(58 ,144, "%d  ", (int16_t)Motor_2_PID.Out);
+			printf("%.1f,%.1f,%.1f\n", Motor_1_PID.Actual, Motor_1_PID.Target, Motor_2_PID.Out);
         }
-            
-            
+        
+        
         /* 光标更新 */
         if (key_pressed)
         {
@@ -795,6 +797,8 @@ int Debug_MT9_Track     (void)
     Time_Count2 = 0;
     uint16 g_track_us = 0;
 
+    // 识别结果初始化
+    TrackRecognition_Init();
 
     while(1)
     {

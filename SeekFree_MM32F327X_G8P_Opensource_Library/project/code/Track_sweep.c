@@ -24,6 +24,7 @@
 
 TrackResult_t g_track_result;
 
+// 二值化判定阈值
 static uint8  s_otsu_threshold = 240;
 
 // ============================================================
@@ -96,6 +97,40 @@ static uint8 otsu_find_threshold(void)
 }
 
 #endif // !THRESHOLD_MODE_FIXED
+
+// ============================================================
+// 出界判定
+// 扫描底行中心是否全黑
+// ============================================================
+
+// 底部黑点比例检测 — 只扫描中心区域
+// 参数对应：3/8*W=70, 5/8*W=117, 底部5行=第115~119行
+#define LOSE_TRACK_COL_LEFT   70
+#define LOSE_TRACK_COL_RIGHT  117
+#define LOSE_TRACK_ROW_START  115                    // 从第115行开始(近处)
+
+#define LOSE_TRACK_CHECK_TOTAL      ((BOTTOM_ROW - LOSE_TRACK_ROW_START + 1)  * (LOSE_TRACK_COL_RIGHT - LOSE_TRACK_COL_LEFT + 1)) 
+
+// 返回值: 0=正常  1=出界
+uint8 check_offtrack_bottom_center(void)
+{
+    uint32 black_cnt = 0;
+
+    for (int16 row = LOSE_TRACK_ROW_START; row <= BOTTOM_ROW; row++)
+    {
+        for (int16 col = LOSE_TRACK_COL_LEFT; col <= LOSE_TRACK_COL_RIGHT; col++)
+        {
+            if (mt9v03x_image[row][col] <= TrackRecognition_GetThreshold())
+                black_cnt++;
+        }
+    }
+
+    float ratio = (float)black_cnt / (float)LOSE_TRACK_CHECK_TOTAL;
+
+    if (ratio > 0.80f) return 1;    // 黑点 > 80% → 出界
+
+    return 0;
+}
 
 // ============================================================
 // 最长白列（从底部向上，中心区域找白色段最长的列）
@@ -302,13 +337,15 @@ static void draw_row_overlay(int16 row, uint16 y_offset)
 
 void TrackRecognition_Init(void)
 {
+    // 初始化二值化阈值
 #if THRESHOLD_MODE_FIXED
     s_otsu_threshold = FIXED_THRESHOLD;
 #else
-    s_otsu_threshold = 128;
-    s_otsu_last_valid = 128;
+    s_otsu_threshold = 220;
+    s_otsu_last_valid = 220;
 #endif
 
+    // 重置赛道识别结果
     TrackResult_t *p = &g_track_result;
     for (int16 i = 0; i < IMG_H; i++)
     {
@@ -324,22 +361,27 @@ void TrackRecognition_Init(void)
 
 void TrackRecognition_Process(void)
 {
+    // 绘制黑框
     draw_image_black_border();
 
+    // 获取当前二值化阈值
 #if THRESHOLD_MODE_FIXED
     s_otsu_threshold = (uint8)FIXED_THRESHOLD;
 #else
     uint8 raw_th = otsu_find_threshold();
     s_otsu_threshold = (uint8)(((uint16)s_otsu_threshold * 7 + (uint16)raw_th * 3) / 10);
 #endif
-
+    // 扫边线
     sweep_boundaries();
+    // 计算转角
     calc_steering_value();
 }
 
+// 获取当前二值化阈值
 uint8 TrackRecognition_GetThreshold(void)
 { return s_otsu_threshold; }
 
+// 绘制中线、边线(图像显示需要单独调用)
 void TrackRecognition_DrawOverlay(uint16 y_offset)
 {
     for (int16 row = BOTTOM_ROW; row >= 0; row--)
