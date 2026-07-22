@@ -84,17 +84,16 @@ int main_process(void)
         if (Time_Count1 >= 1)// 10ms * 1 = 10ms 控制周期
         {
             Time_Count1 = 0;
-
-            // ---- 出界判定 ----
-            if (check_offtrack_bottom_center() == 1)
-            {
-                // 停车
-                car_state = Car_Stop;
-            }
-            // ---- 赛道识别 ----
+            
+            // 出界判定 + 赛道识别
             if(mt9v03x_finish_flag)
             {
                 mt9v03x_finish_flag = 0;
+                if (check_offtrack_bottom_center() == 1)
+                {
+                    // 停车
+                    car_state = Car_Stop;
+                }
                 TrackRecognition_Process();
             }
 
@@ -141,15 +140,15 @@ int main_process(void)
             Time_Count2 = 0;
 
             // 不消费 finish_flag，直接显示（可能比控制周期旧一帧，不影响调试）
-            // ips200_show_gray_image(0, 32,
-            //     mt9v03x_image[0], MT9V03X_W, MT9V03X_H,
-            //     MT9V03X_W, MT9V03X_H, TrackRecognition_GetThreshold());
-            // TrackRecognition_DrawOverlay(32);
+            ips200_show_gray_image(0, 32,
+                mt9v03x_image[0], MT9V03X_W, MT9V03X_H,
+                MT9V03X_W, MT9V03X_H, TrackRecognition_GetThreshold());
+            TrackRecognition_DrawOverlay(32);
 
             // 调试：观察赛道偏差和基础速度
-            // ips200_show_float(0, 160, g_track_result.steering_value, 6, 2);
-            // ips200_show_uint (120, 160, (uint16)pwm_base, 4);
-            // ips200_show_float(0, 176, Steer_Ctrl_PPDD.Out, 6, 2);
+            ips200_show_float(0, 160, g_track_result.steering_value, 6, 2);
+            ips200_show_uint (120, 160, (uint16)pwm_base, 4);
+            ips200_show_float(0, 176, Steer_Ctrl_PPDD.Out, 6, 2);
         }
     }
 }
