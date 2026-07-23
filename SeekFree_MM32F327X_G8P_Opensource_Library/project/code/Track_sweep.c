@@ -105,9 +105,10 @@ static uint8 otsu_find_threshold(void)
 
 // 底部黑点比例检测 — 只扫描中心区域
 // 参数对应：3/8*W=70, 5/8*W=117, 底部5行=第115~119行
-#define LOSE_TRACK_COL_LEFT   70
-#define LOSE_TRACK_COL_RIGHT  117
-#define LOSE_TRACK_ROW_START  115                    // 从第115行开始(近处)
+#define LOSE_TRACK_COL_LEFT   		70
+#define LOSE_TRACK_COL_RIGHT  		117
+#define LOSE_TRACK_ROW_START  		115           // 从第115行开始(近处)
+#define LOSE_TRACK_FRAME_CNT    	5           // 连续 CNT 帧触发才判定出界
 
 #define LOSE_TRACK_CHECK_TOTAL      ((BOTTOM_ROW - LOSE_TRACK_ROW_START + 1)  * (LOSE_TRACK_COL_RIGHT - LOSE_TRACK_COL_LEFT + 1)) 
 
@@ -115,6 +116,7 @@ static uint8 otsu_find_threshold(void)
 uint8 Check_LoseTrack(void)
 {
     uint32 black_cnt = 0;
+    static uint8 lose_cnt = 0;
 
     for (int16 row = LOSE_TRACK_ROW_START; row <= BOTTOM_ROW; row++)
     {
@@ -127,7 +129,15 @@ uint8 Check_LoseTrack(void)
 
     float ratio = (float)black_cnt / (float)LOSE_TRACK_CHECK_TOTAL;
 
-    if (ratio > 0.80f) return 1;    // 黑点 > 80% → 出界
+    if (ratio > 0.80f)
+    {
+        if (++lose_cnt >= LOSE_TRACK_FRAME_CNT)
+            return 1;
+    }
+    else
+    {
+        lose_cnt = 0;
+    }
 
     return 0;
 }
@@ -137,8 +147,8 @@ uint8 Check_LoseTrack(void)
 // 采样,统计黑白跳变的次数
 // ============================================================
 
-// 斑马线检测 — 6行稀疏采样，统计黑白跳变次数
-#define ZEBRA_SAMPLE_ROWS     6
+// 斑马线检测 — 较集中的稀疏采样，统计黑白跳变次数
+#define ZEBRA_SAMPLE_ROWS     4
 #define ZEBRA_EDGE_MIN        8      // 单行跳变 > 8 → 异常
 #define ZEBRA_EXCEPT_MIN      3      // 异常行 ≥ 3 → 判定为斑马线
 
@@ -149,11 +159,11 @@ uint8 Check_Zebra(void)
 
     for (uint8 i = 0; i < ZEBRA_SAMPLE_ROWS; i++)
     {
-        int16 row = 35 + i * 15;    // 行 35, 50, 65, 80, 95, 110
+        int16 row = 40 + i ;     // 行 40, 41, 42, 43
         uint8 edges = 0;
-        uint8 prev = (mt9v03x_image[row][2] > threshold);
+        uint8 prev = (mt9v03x_image[row][5] > threshold);
 
-        for (int16 col = 3; col < IMG_W - 3; col++)
+        for (int16 col = 6; col < IMG_W - 5; col++)
         {
             uint8 cur = (mt9v03x_image[row][col] > threshold);
             if (cur != prev) edges++;
@@ -161,7 +171,7 @@ uint8 Check_Zebra(void)
         }
 
         if (edges > ZEBRA_EDGE_MIN)
-            abnormal_rows++;
+        { abnormal_rows++; }
     }
 
     return (abnormal_rows >= ZEBRA_EXCEPT_MIN) ? 1 : 0;
@@ -301,7 +311,7 @@ static void sweep_boundaries(void)
 // ============================================================
 // 转角计算（加权平均中线偏差，单位：像素）
 // steering_value = Σ(每行中线偏离图像中心距离 × 权重) / Σ权重
-// 权重范围 1.0(远处) ~ 3.0(近处)，近处信息对转向贡献更大
+// 权重范围 1.0(远处) ~ 2.5(近处)，高速模式下远处权重占比提高以提前转向
 // 结果：0=直道  >0=右弯  <0=左弯  典型值 0~40
 // ============================================================
 static void calc_steering_value(void)
@@ -318,7 +328,7 @@ static void calc_steering_value(void)
             && g_track_result.center_line[row] < IMG_W)
         {
             int16 dev = (int16)g_track_result.center_line[row] - IMG_CENTER;   // 该行中线偏离, 单位像素
-            float w = 1.0f + (float)row / (float)IMG_H * 2.0f;                // 行权重, 近处大
+            float w = 1.0f + (float)row / (float)IMG_H * 1.5f;                // 行权重, 近大远小(倍率压缩)
             total_dev += dev * w; total_w += w;
         }
     }

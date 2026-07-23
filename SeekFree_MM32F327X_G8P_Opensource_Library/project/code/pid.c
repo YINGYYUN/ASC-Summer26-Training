@@ -186,22 +186,22 @@ void STEER_CTRL_Update(STEER_CTRL_t *p)
 
 // 电机1 PID参数
 PID_INC_t Motor_1_PID = {
-	.OutMax      =  5000,				// 输出限幅（上限）
-	.OutMin      = -5000,				// 输出限幅（下限）
-	.OutDeltaMax =   400,				// 单次增量变化上限（≈4%占空比）
+	.OutMax      =  4000,				// 输出限幅（上限）
+	.OutMin      = -4000,				// 输出限幅（下限）
+	.OutDeltaMax =   600,				// 单次增量变化上限（≈4%占空比）
 };
 
 // 电机2 PID参数
 PID_INC_t Motor_2_PID = {
-	.OutMax      =  5000,				// 输出限幅（上限）
-	.OutMin      = -5000,				// 输出限幅（下限）
-	.OutDeltaMax =   400,				// 单次增量变化上限（≈4%占空比）
+	.OutMax      =  4000,				// 输出限幅（上限）
+	.OutMin      = -4000,				// 输出限幅（下限）
+	.OutDeltaMax =   600,				// 单次增量变化上限（≈4%占空比）
 };
 
 // 转向控制
 STEER_CTRL_t Steer_Ctrl_PPDD = {
-    .OutMax =  2000,
-    .OutMin = -2000,
+    .OutMax =  4000,
+    .OutMin = -4000,
 };
 
 // 重置PID的所有中间量
