@@ -32,7 +32,6 @@ static void param_page_init(void)
     DynamicCreate_Menu_LimitNumber(folder_m3, "KD" , &STEER_KD , float_Box, 0, 20);
     DynamicCreate_Menu_LimitNumber(folder_m3, "GKD", &STEER_GKD, float_Box, 0, 20);
 
-
     key = head.first_son;   // 光标移到第一项
 }
 

@@ -34,6 +34,7 @@ int main_process(void)
     int16_t pwm_left  = 0;
     int16_t pwm_right = 0;
 
+    ips200_show_string(0  ,192, "State:IDLE");
 
     while(1)
     {
@@ -51,6 +52,7 @@ int main_process(void)
             key_clear_state(KEY_CONFIRM);
             // 发车
             car_state = Car_Running;
+            ips200_show_string(48 ,192, "Run~");
         }
         else if (KEY_SHORT_PRESS == key_get_state(KEY_BACK))
         {
@@ -78,6 +80,8 @@ int main_process(void)
             TrackRecognition_Init();
             // 切换到空闲状态，防止反复触发停车相关代码
             car_state = Car_IDLE;
+            // 加快流程,只会在屏幕指示IDLE状态,STOP状态跳过
+            ips200_show_string(48 ,192, "IDLE");
         }
 
 
@@ -89,7 +93,7 @@ int main_process(void)
             if(mt9v03x_finish_flag)
             {
                 mt9v03x_finish_flag = 0;
-                if (check_offtrack_bottom_center() == 1)
+                if (Check_LoseTrack() == 1)
                 {
                     // 停车
                     car_state = Car_Stop;
@@ -118,16 +122,16 @@ int main_process(void)
 
                 // 速度分级：赛道偏差小 → 高速，偏差大 → 低速
                 if (fabs(g_track_result.steering_value) < 1.5f)
-                    pwm_base = 1000;
+                    pwm_base = 1400;
                 else
-                    pwm_base = 650;
+                    pwm_base = 800;
 
                 pwm_left  = pwm_base - (int16_t)Steer_Ctrl_PPDD.Out;
                 pwm_right = pwm_base + (int16_t)Steer_Ctrl_PPDD.Out;
-                if (3000 <= pwm_left)  { pwm_left  =  3000; }
-                if (pwm_left <= -3000) { pwm_left  = -3000; }
-                if (3000 <= pwm_right) { pwm_right =  3000; }
-                if (pwm_right <= -3000){ pwm_right = -3000; }
+                if (3500 <= pwm_left)  { pwm_left  =  3500; }
+                if (pwm_left <= -3500) { pwm_left  = -3500; }
+                if (3500 <= pwm_right) { pwm_right =  3500; }
+                if (pwm_right <= -3500){ pwm_right = -3500; }
 
                 Motor_Set(1, pwm_left);
                 Motor_Set(2, pwm_right);
@@ -140,10 +144,10 @@ int main_process(void)
             Time_Count2 = 0;
 
             // 不消费 finish_flag，直接显示（可能比控制周期旧一帧，不影响调试）
-            ips200_show_gray_image(0, 32,
-                mt9v03x_image[0], MT9V03X_W, MT9V03X_H,
-                MT9V03X_W, MT9V03X_H, TrackRecognition_GetThreshold());
-            TrackRecognition_DrawOverlay(32);
+            // ips200_show_gray_image(0, 32,
+            //     mt9v03x_image[0], MT9V03X_W, MT9V03X_H,
+            //     MT9V03X_W, MT9V03X_H, TrackRecognition_GetThreshold());
+            // TrackRecognition_DrawOverlay(32);
 
             // 调试：观察赛道偏差和基础速度
             ips200_show_float(0, 160, g_track_result.steering_value, 6, 2);

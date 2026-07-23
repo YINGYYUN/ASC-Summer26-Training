@@ -110,6 +110,8 @@ void TIM6_IRQHandler (void)
 	// 自增,3000清零
     Time_Count1 = (Time_Count1 >= 3000) ? 0 : Time_Count1 + 1;
     Time_Count2 = (Time_Count2 >= 3000) ? 0 : Time_Count2 + 1;
+    // IMU读取和解算标志位(可能不需要这个设定)
+    IMU_D_and_A_Enable = 1;
     // 此处编写用户代码
     TIM6->SR &= ~TIM6->SR;
 }

@@ -504,6 +504,16 @@
               <FileType>5</FileType>
               <FilePath>..\code\process.h</FilePath>
             </File>
+            <File>
+              <FileName>Sim_IMU_Analysis.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\code\Sim_IMU_Analysis.c</FilePath>
+            </File>
+            <File>
+              <FileName>Sim_IMU_Analysis.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\code\Sim_IMU_Analysis.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

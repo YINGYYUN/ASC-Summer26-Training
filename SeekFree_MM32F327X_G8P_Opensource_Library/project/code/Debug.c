@@ -23,7 +23,7 @@ void Debug_Page_Menu_UI(uint8_t Page)
 			ips200_show_string(10 ,64 , "Motor_PID");       // 速度环
             ips200_show_string(10 ,80 , "MT9V03x");         // 总钻风图像显示
             ips200_show_string(10 ,96 , "MT9-Track");       // 赛道识别
-            ips200_show_string(10 ,112, "IMU-Ori");       // IMU963RA原始数据查看
+            ips200_show_string(10 ,112, "IMU");         // IMU963RA调试
 		
 			break;
 	}
@@ -98,25 +98,30 @@ void Debug_MT9_Track_UI(void)
     ips200_show_string(0  ,160, "Track(us):");
     ips200_show_string(0  ,176, "Show(us):NaN");
     ips200_show_string(0  ,192, "Steer:");
+    ips200_show_string(0  ,208, "Lose?:");
+    ips200_show_string(0  ,224, "Zebra:");
 }
 
-// [三级界面]IMU963RA原始数据查看界面
-void Debug_IMU_Ori_UI(void)
+// [三级界面]IMU963RA调试界面
+void Debug_IMU_UI(void)
 {
-    ips200_show_string(8  ,0  , "[DEBUG]-IMU_Ori");
+    ips200_show_string(8  ,0  , "[DEBUG]-IMU");
     ips200_show_string(0  ,16 , "==============================");
+    ips200_show_string(0  ,32 , "Cali:[GYRO]IDLE  [MAGN]IDLE");
     // 空行
-    ips200_show_string(0  ,48 , "ax:#");
-    ips200_show_string(0  ,64 , "ay:#");
-    ips200_show_string(0  ,80 , "az:#");
+    ips200_show_string(0  ,64 , "ax:NaN");
+    ips200_show_string(0  ,80 , "ay:NaN");
+    ips200_show_string(0  ,96 , "az:NaN");
+    ips200_show_string(0  ,112, "gx:NaN");
+    ips200_show_string(0  ,128, "gy:NaN");
+    ips200_show_string(0  ,144, "gz:NaN");
+    // ips200_show_string(0  ,160, "mx:NaN");
+    // ips200_show_string(0  ,176, "my:NaN");
+    // ips200_show_string(0  ,192, "mz:NaN");
     // 空行
-    ips200_show_string(0  ,112, "gx:#");
-    ips200_show_string(0  ,128, "gy:#");
-    ips200_show_string(0  ,144, "gz:#");
-    // 空行
-    ips200_show_string(0  ,176, "mx:#");
-    ips200_show_string(0  ,192, "my:#");
-    ips200_show_string(0  ,208, "mz:#");
+    ips200_show_string(0  ,224, "Rol:NaN");
+    ips200_show_string(0  ,240, "Yaw:NaN");
+    ips200_show_string(0  ,256, "Pih:NaN");
 }
 /**********************************************************/
 /*----------------------------------------[E] 界面样式 [E]*/
@@ -133,7 +138,7 @@ int Debug_Motor         (void);
 int Debug_Motor_PID     (void);
 int Debug_MT9V03x       (void);
 int Debug_MT9_Track     (void);
-int Debug_IMU_Ori       (void);
+int Debug_IMU           (void);
 
 
 // [二级界面]Debug模式界面
@@ -235,7 +240,7 @@ int Debug_Page_Menu(void)
         else if (Debug_Page_flag_temp == 6)
         {
             ips200_clear();
-            Debug_IMU_Ori();
+            Debug_IMU();
             
             // 从子界面返回后
             ips200_clear();
@@ -796,6 +801,8 @@ int Debug_MT9_Track     (void)
     Time_Count1 = 0;
     Time_Count2 = 0;
     uint16 g_track_us = 0;
+    uint8_t lose_track_flag = 0;
+    uint8_t zebra_flag = 0;
 
     // 识别结果初始化
     TrackRecognition_Init();
@@ -821,10 +828,15 @@ int Debug_MT9_Track     (void)
             if(mt9v03x_finish_flag)
             {
                 mt9v03x_finish_flag = 0;
-
+                // 计时开始
                 timer_init(TIM_2, TIMER_US);
                 timer_start(TIM_2);
+
+                lose_track_flag = Check_LoseTrack();
                 TrackRecognition_Process();
+                zebra_flag = Check_Zebra();
+
+                // 计时结束
                 g_track_us = timer_get(TIM_2);
                 timer_stop(TIM_2);
             }
@@ -839,23 +851,66 @@ int Debug_MT9_Track     (void)
                 mt9v03x_image[0], MT9V03X_W, MT9V03X_H,
                 MT9V03X_W, MT9V03X_H, TrackRecognition_GetThreshold());
             TrackRecognition_DrawOverlay(32);
-
+            // 显示耗时
             ips200_show_uint(80, 160, g_track_us, 6);
+            // 显示偏差值
             ips200_printf(48, 192, "%2.2f", g_track_result.steering_value);
+            // 显示是否丢线
+            if (lose_track_flag)
+            {
+                ips200_show_string(48 ,208, "Y");
+            }
+            else
+            {
+                ips200_show_string(48 ,208, "N");
+            }
+            // 显示是否寻找到斑马线
+            if (zebra_flag)
+            {
+                ips200_show_string(48 ,224, "Y");
+            }
+            else
+            {
+                ips200_show_string(48 ,224, "N");
+            }
         }
     }
 }
 
-//  #####  #   #  #   #          ###   ####   #####  
-//    #    ## ##  #   #         #   #  #   #    #    
-//    #    # # #  #   #  #####  #   #  ####     #    
-//    #    #   #  #   #         #   #  #  #     #    
-//  #####  #   #   ###           ###   #   #  #####  
+//  #####  #   #  #   #  
+//    #    ## ##  #   #  
+//    #    # # #  #   #  
+//    #    #   #  #   #  
+//  #####  #   #   ###   
 //
 // [三级界面]IMU963RA原始数据查看界面
-int Debug_IMU_Ori (void)
+int Debug_IMU (void)
 {
-    Debug_IMU_Ori_UI();
+    Debug_IMU_UI();
+
+    // 干脆总是存在一个没有校准陀螺仪就校准陀螺仪的设定
+
+    /* 半阻塞式IMU963RA零飘此时请保持静此时请保持静止)*/
+	if (IMU_Gyro_Calib_Check(&gyro_cal) != GYRO_CALIB_STATE_DONE)// 如果未校准
+	{
+        ips200_show_string(40 ,32 , "#GYRO#ING~");
+	    IMU_Gyro_Calib_Start(&gyro_cal);
+	}
+	// 半阻塞式零飘校准
+	while(1)
+    {
+        if (IMU_Gyro_Calib_Check(&gyro_cal) == GYRO_CALIB_STATE_DONE)  // 零飘校准完成
+        {
+            ips200_show_string(40 ,32 , "#GYRO#DONE");
+            break;  // 结束零飘校准
+        }
+        if (KEY_SHORT_PRESS == key_get_state(KEY_BACK)) // 强制零飘校准退出
+        {
+            key_clear_state(KEY_BACK);
+            ips200_show_string(40 ,32 , "#GYRO#STOP");
+            break;  // 中止零飘校准
+        }
+    }
 
     // 参考计时值重置
     Time_Count1 = 0;
@@ -866,7 +921,30 @@ int Debug_IMU_Ori (void)
         /* 按键处理 */
         key_clear_state(KEY_UP); // 仅消费标志位
         key_clear_state(KEY_DOWN); // 仅消费标志位
-        key_clear_state(KEY_CONFIRM); // 仅消费标志位
+        if (KEY_SHORT_PRESS == key_get_state(KEY_CONFIRM))
+        {
+            key_clear_state(KEY_CONFIRM);
+
+            IMU_Gyro_Calib_Start(&gyro_cal);
+            ips200_show_string(40 ,32 , "#GYRO#ING~");
+            // 半阻塞式零飘校准
+            while(1)
+            {
+                if (IMU_Gyro_Calib_Check(&gyro_cal) == GYRO_CALIB_STATE_DONE)  // 零飘校准完成
+                {
+                    ips200_show_string(40 ,32 , "#GYRO#DONE");
+                    break;  // 结束零飘校准
+                }                                                             
+                if (KEY_SHORT_PRESS == key_get_state(KEY_BACK)) // 强制零飘校准退出
+                {
+                    key_clear_state(KEY_BACK);
+
+                    ips200_show_string(40 ,32 , "#GYRO#STOP");
+                    break;  // 中止零飘校准
+                }        
+            }
+            IMU_Reset_Data();
+        };
         if (KEY_SHORT_PRESS == key_get_state(KEY_BACK))
         {
             key_clear_state(KEY_BACK);
@@ -877,31 +955,36 @@ int Debug_IMU_Ori (void)
         }
 
 
-        if (Time_Count1 >= 5)// 10ms * 5 周期
+        if (Time_Count1 >= 1)// 10ms * 1 解算周期
         {
             Time_Count1 = 0;
 
-            imu963ra_get_acc();
-            imu963ra_get_gyro();
-            imu963ra_get_mag();
+            // 读取 IMU 原始数据
+            // imu963ra_get_acc();
+            // imu963ra_get_gyro();
+            // imu963ra_get_mag();
+            IMU_Update_Data();
+
+            // 姿态解算
+            IMU_Update_Analysis();
         }
 
-        
-        if (Time_Count2 >= 10)// 10ms * 10 周期
+
+        if (Time_Count2 >= 15)// 10ms * 15 显示周期
         {
             Time_Count2 = 0;
 
-            ips200_printf(24 ,48 , "%d   ", imu963ra_acc_x);
-            ips200_printf(24 ,64 , "%d   ", imu963ra_acc_y);
-            ips200_printf(24 ,80 , "%d   ", imu963ra_acc_z);
-
+            ips200_printf(24 ,64 , "%d   ", imu963ra_acc_x);
+            ips200_printf(24 ,80 , "%d   ", imu963ra_acc_y);
+            ips200_printf(24 ,96 , "%d   ", imu963ra_acc_z);
             ips200_printf(24 ,112, "%d   ", imu963ra_gyro_x);
             ips200_printf(24 ,128, "%d   ", imu963ra_gyro_y);
             ips200_printf(24 ,144, "%d   ", imu963ra_gyro_z);
+            // ips200_printf(24 ,160, "%d   ", imu963ra_mag_x);
+            // ips200_printf(24 ,176, "%d   ", imu963ra_mag_y);
+            // ips200_printf(24 ,192, "%d   ", imu963ra_mag_z);
 
-            ips200_printf(24 ,176, "%d   ", imu963ra_mag_x);
-            ips200_printf(24 ,192, "%d   ", imu963ra_mag_y);
-            ips200_printf(24 ,208, "%d   ", imu963ra_mag_z);
+            ips200_printf(32 ,256, "%.2f  ", Pitch_Result);
         }
     }
 }

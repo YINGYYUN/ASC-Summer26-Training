@@ -143,6 +143,7 @@ extern uint16 Time_Count2;
 #include "Param_Page.h"
 #include "Param_Storage.h"
 #include "process.h"
+#include "Sim_IMU_Analysis.h"
 //===================================================用户自定义文件===================================================
 
 #endif

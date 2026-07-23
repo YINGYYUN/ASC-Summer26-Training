@@ -112,7 +112,7 @@ static uint8 otsu_find_threshold(void)
 #define LOSE_TRACK_CHECK_TOTAL      ((BOTTOM_ROW - LOSE_TRACK_ROW_START + 1)  * (LOSE_TRACK_COL_RIGHT - LOSE_TRACK_COL_LEFT + 1)) 
 
 // 返回值: 0=正常  1=出界
-uint8 check_offtrack_bottom_center(void)
+uint8 Check_LoseTrack(void)
 {
     uint32 black_cnt = 0;
 
@@ -130,6 +130,41 @@ uint8 check_offtrack_bottom_center(void)
     if (ratio > 0.80f) return 1;    // 黑点 > 80% → 出界
 
     return 0;
+}
+
+// ============================================================
+// 斑马线判定
+// 采样,统计黑白跳变的次数
+// ============================================================
+
+// 斑马线检测 — 6行稀疏采样，统计黑白跳变次数
+#define ZEBRA_SAMPLE_ROWS     6
+#define ZEBRA_EDGE_MIN        8      // 单行跳变 > 8 → 异常
+#define ZEBRA_EXCEPT_MIN      3      // 异常行 ≥ 3 → 判定为斑马线
+
+uint8 Check_Zebra(void)
+{
+    uint8 threshold = TrackRecognition_GetThreshold();
+    uint8 abnormal_rows = 0;
+
+    for (uint8 i = 0; i < ZEBRA_SAMPLE_ROWS; i++)
+    {
+        int16 row = 35 + i * 15;    // 行 35, 50, 65, 80, 95, 110
+        uint8 edges = 0;
+        uint8 prev = (mt9v03x_image[row][2] > threshold);
+
+        for (int16 col = 3; col < IMG_W - 3; col++)
+        {
+            uint8 cur = (mt9v03x_image[row][col] > threshold);
+            if (cur != prev) edges++;
+            prev = cur;
+        }
+
+        if (edges > ZEBRA_EDGE_MIN)
+            abnormal_rows++;
+    }
+
+    return (abnormal_rows >= ZEBRA_EXCEPT_MIN) ? 1 : 0;
 }
 
 // ============================================================
@@ -264,7 +299,10 @@ static void sweep_boundaries(void)
 }
 
 // ============================================================
-// 转角计算
+// 转角计算（加权平均中线偏差，单位：像素）
+// steering_value = Σ(每行中线偏离图像中心距离 × 权重) / Σ权重
+// 权重范围 1.0(远处) ~ 3.0(近处)，近处信息对转向贡献更大
+// 结果：0=直道  >0=右弯  <0=左弯  典型值 0~40
 // ============================================================
 static void calc_steering_value(void)
 {
@@ -279,8 +317,8 @@ static void calc_steering_value(void)
             && g_track_result.center_line[row] >= 0
             && g_track_result.center_line[row] < IMG_W)
         {
-            int16 dev = (int16)g_track_result.center_line[row] - IMG_CENTER;
-            float w = 1.0f + (float)row / (float)IMG_H * 2.0f;
+            int16 dev = (int16)g_track_result.center_line[row] - IMG_CENTER;   // 该行中线偏离, 单位像素
+            float w = 1.0f + (float)row / (float)IMG_H * 2.0f;                // 行权重, 近处大
             total_dev += dev * w; total_w += w;
         }
     }

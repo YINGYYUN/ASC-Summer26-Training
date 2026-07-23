@@ -20,7 +20,9 @@ typedef struct
 extern TrackResult_t g_track_result;
 
 // 出界保护 0=正常  1=出界
-uint8 check_offtrack_bottom_center(void);
+uint8 Check_LoseTrack               (void);
+// 起止点(斑马线)识别
+uint8 Check_Zebra                   (void);
 // 赛道识别初始化
 void  TrackRecognition_Init         (void);
 // 赛道识别进程
