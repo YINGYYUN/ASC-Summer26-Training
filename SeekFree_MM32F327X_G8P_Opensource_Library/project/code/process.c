@@ -34,6 +34,9 @@ int main_process(void)
     int16_t pwm_left  = 0;
     int16_t pwm_right = 0;
 
+    ips200_show_string(8  ,0  , "[Process]");
+    ips200_show_string(0  ,16 , "==============================");
+    
     ips200_show_string(0  ,192, "State:IDLE");
 
     while(1)
@@ -119,12 +122,11 @@ int main_process(void)
                 }
                 Steer_Ctrl_PPDD.Gyro = imu963ra_gyro_z;
                 STEER_CTRL_Update(&Steer_Ctrl_PPDD);
-
                 // 速度分级：赛道偏差小 → 高速，偏差大 → 低速
                 if (fabs(g_track_result.steering_value) < 1.5f)
-                    pwm_base = 1900;
+                    pwm_base = 1800;
                 else
-                    pwm_base = 1600;
+                    pwm_base = 1400;
 
                 pwm_left  = pwm_base - (int16_t)Steer_Ctrl_PPDD.Out;
                 pwm_right = pwm_base + (int16_t)Steer_Ctrl_PPDD.Out;

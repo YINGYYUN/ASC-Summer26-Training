@@ -152,10 +152,13 @@ uint8 Check_LoseTrack(void)
 #define ZEBRA_EDGE_MIN        8      // 单行跳变 > 8 → 异常
 #define ZEBRA_EXCEPT_MIN      3      // 异常行 ≥ 3 → 判定为斑马线
 
+uint8 g_zebra_avg_edges = 0;        // 调试：采样行的平均跳变次数
+
 uint8 Check_Zebra(void)
 {
     uint8 threshold = TrackRecognition_GetThreshold();
     uint8 abnormal_rows = 0;
+    uint16 total_edges = 0;
 
     for (uint8 i = 0; i < ZEBRA_SAMPLE_ROWS; i++)
     {
@@ -170,10 +173,13 @@ uint8 Check_Zebra(void)
             prev = cur;
         }
 
+        total_edges += edges;
+
         if (edges > ZEBRA_EDGE_MIN)
         { abnormal_rows++; }
     }
 
+    g_zebra_avg_edges = (uint8)(total_edges / ZEBRA_SAMPLE_ROWS);
     return (abnormal_rows >= ZEBRA_EXCEPT_MIN) ? 1 : 0;
 }
 
@@ -311,7 +317,7 @@ static void sweep_boundaries(void)
 // ============================================================
 // 转角计算（加权平均中线偏差，单位：像素）
 // steering_value = Σ(每行中线偏离图像中心距离 × 权重) / Σ权重
-// 权重范围 1.0(远处) ~ 2.5(近处)，高速模式下远处权重占比提高以提前转向
+// 高速模式下权重偏向远处：远处=1.5，近处=1.0，尝试提前转向
 // 结果：0=直道  >0=右弯  <0=左弯  典型值 0~40
 // ============================================================
 static void calc_steering_value(void)
@@ -327,8 +333,9 @@ static void calc_steering_value(void)
             && g_track_result.center_line[row] >= 0
             && g_track_result.center_line[row] < IMG_W)
         {
-            int16 dev = (int16)g_track_result.center_line[row] - IMG_CENTER;   // 该行中线偏离, 单位像素
-            float w = 1.0f + (float)row / (float)IMG_H * 1.5f;                // 行权重, 近大远小(倍率压缩)
+            int16 dev = (int16)g_track_result.center_line[row] - IMG_CENTER;               // 该行中线偏离, 单位像素
+//            float w = 1.0f + (float)(BOTTOM_ROW - row) / (float)IMG_H * 0.5f;              // 远处=1.5, 近处=1.0
+            float w = 1.0f + (float)row / (float)IMG_H * 1.5f;                               // 远处=1.0, 近处=2.5
             total_dev += dev * w; total_w += w;
         }
     }

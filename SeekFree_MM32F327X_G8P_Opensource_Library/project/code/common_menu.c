@@ -8,7 +8,7 @@
 
 
 // 静态内存池(用于分配动态创建的菜单)
-#define MENU_MAX_SIZE           (64)
+#define MENU_MAX_SIZE           (20)
 
 static Menu_Item menu_item_arr[MENU_MAX_SIZE];
 static uint8_t menu_arr_index = 0;
@@ -34,8 +34,8 @@ Menu_Item head = {
 Menu_Item *key;
 
 // 步进值控制
-#define SETUP_LEN               (5)
-static float SetupNumber[SETUP_LEN] = {0.01f, 0.1f, 1, 10, 100};
+#define SETUP_LEN               (4)
+static float SetupNumber[SETUP_LEN] = {0.01f, 0.1f, 1, 10};
 static uint8_t SetupIndex = 2;          // 默认步进 = 1
 
 

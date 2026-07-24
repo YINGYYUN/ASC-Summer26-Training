@@ -23,7 +23,7 @@ void Debug_Page_Menu_UI(uint8_t Page)
 			ips200_show_string(10 ,64 , "Motor_PID");       // 速度环
             ips200_show_string(10 ,80 , "MT9V03x");         // 总钻风图像显示
             ips200_show_string(10 ,96 , "MT9-Track");       // 赛道识别
-            ips200_show_string(10 ,112, "IMU");         // IMU963RA调试
+            ips200_show_string(10 ,112, "IMU");             // IMU963RA调试
 		
 			break;
 	}
@@ -800,6 +800,7 @@ int Debug_MT9_Track     (void)
     // 参考计时值重置
     Time_Count1 = 0;
     Time_Count2 = 0;
+
     uint16 g_track_us = 0;
     uint8_t lose_track_flag = 0;
     uint8_t zebra_flag = 0;
@@ -821,7 +822,7 @@ int Debug_MT9_Track     (void)
         }
 
 
-        if (Time_Count1 >= 1)// 10ms 处理周期
+        if (Time_Count1 >= 1)// 10ms * 1 处理周期
         {
             Time_Count1 = 0;
 
@@ -843,7 +844,7 @@ int Debug_MT9_Track     (void)
         }
 
 
-        if (Time_Count2 >= 10)// 100ms 显示周期
+        if (Time_Count2 >= 15)// 10ms * 15 显示周期
         {
             Time_Count2 = 0;
 
@@ -873,6 +874,8 @@ int Debug_MT9_Track     (void)
             {
                 ips200_show_string(48 ,224, "N");
             }
+            // 调试：显示采样行平均跳变值
+            ips200_show_uint(120, 224, (uint16)g_zebra_avg_edges, 3);
         }
     }
 }
@@ -977,9 +980,11 @@ int Debug_IMU (void)
             ips200_printf(24 ,64 , "%d   ", imu963ra_acc_x);
             ips200_printf(24 ,80 , "%d   ", imu963ra_acc_y);
             ips200_printf(24 ,96 , "%d   ", imu963ra_acc_z);
-            ips200_printf(24 ,112, "%d   ", imu963ra_gyro_x);
-            ips200_printf(24 ,128, "%d   ", imu963ra_gyro_y);
-            ips200_printf(24 ,144, "%d   ", imu963ra_gyro_z);
+			float gx = 0.0f, gy = 0.0f,gz = 0.0f;
+			IMU_Gyro_Apply(&gyro_cal, &gx, &gy, &gz);
+            ips200_printf(24 ,112, "%d   ", (int)gx);
+            ips200_printf(24 ,128, "%d   ", (int)gy);
+            ips200_printf(24 ,144, "%d   ", (int)gz);
             // ips200_printf(24 ,160, "%d   ", imu963ra_mag_x);
             // ips200_printf(24 ,176, "%d   ", imu963ra_mag_y);
             // ips200_printf(24 ,192, "%d   ", imu963ra_mag_z);

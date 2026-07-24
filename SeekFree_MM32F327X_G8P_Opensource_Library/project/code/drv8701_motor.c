@@ -25,12 +25,12 @@ void Motor_Set (uint8 motor, int16 duty)
     gpio_pin_enum    dir_pin;// 方向引脚
     pwm_channel_enum pwm_ch;// PWM引脚
 
-    if(motor == 1) // 电机1
+    if(motor == 1) // 电机1 (左)
     {
         dir_pin = MOTOR_1_DIR_PIN;
         pwm_ch  = MOTOR_1_PWM_CHANNEL;
     }
-    else // 电机2
+    else // 电机2 (右)
     {
         dir_pin = MOTOR_2_DIR_PIN;
         pwm_ch  = MOTOR_2_PWM_CHANNEL;

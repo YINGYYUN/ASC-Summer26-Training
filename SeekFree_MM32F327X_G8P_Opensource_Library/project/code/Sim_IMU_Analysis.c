@@ -173,12 +173,12 @@ void IMU_Gyro_Apply(Gyro_Calib_StructDef *cal, float *gx, float *gy, float *gz)
         *gy = (float)(imu963ra_gyro_y - cal->offset_y);
         *gz = (float)(imu963ra_gyro_z - cal->offset_z);
     }
-    // 未校准时，不应用偏移
+    // 未校准时，应用默认偏移
     else
     {
-        *gx = (float)imu963ra_gyro_x;
-        *gy = (float)imu963ra_gyro_y;
-        *gz = (float)imu963ra_gyro_z;
+        *gx = (float)imu963ra_gyro_x - 7;
+        *gy = (float)imu963ra_gyro_y + 8;
+        *gz = (float)imu963ra_gyro_z + 7;
     }
 
     // "死区"
@@ -228,8 +228,8 @@ void IMU_Update_Analysis(void)
     // 陀螺仪积分俯仰角 (°)
     pitch_gyro = Pitch_Result + (float)gy_raw / imu963ra_transition_factor[1] * IMU_DT;
 
-    // 互补滤波：仅 0.1% 信任加速度计，99.9% 信任陀螺仪
-    Pitch_Result = 0.001f * pitch_acc + 0.999f * pitch_gyro;
+    // 互补滤波：alpha = 0.02，时间常数约 0.5s @100Hz
+    Pitch_Result = 0.02f * pitch_acc + 0.98f * pitch_gyro;
 }
 
 /*======================================================*/

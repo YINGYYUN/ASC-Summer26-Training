@@ -8,10 +8,12 @@
 
 
 // 编码器(正交)通道定义二次宏定义
+// 1 (左)
 #define ENCODER_1 				TIM3_ENCODER
 #define ENC_1_P_CH1				TIM3_ENCODER_CH1_B4
 #define ENC_1_P_CH2				TIM3_ENCODER_CH2_B5
 
+// 2 (右)
 #define ENCODER_2 				TIM4_ENCODER
 #define ENC_2_P_CH1				TIM4_ENCODER_CH1_B6
 #define ENC_2_P_CH2				TIM4_ENCODER_CH2_B7
