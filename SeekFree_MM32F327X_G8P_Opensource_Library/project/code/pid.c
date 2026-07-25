@@ -201,22 +201,22 @@ PID_POS_t GZ_PID = {
 
 // 电机1 PID参数
 PID_INC_t Motor_1_PID = {
-	.OutMax      =  4000,				// 输出限幅（上限）
-	.OutMin      = -4000,				// 输出限幅（下限）
-	.OutDeltaMax =   600,				// 单次增量变化上限（≈4%占空比）
+	.OutMax      =  7000,				// 输出限幅（上限）
+	.OutMin      = -7000,				// 输出限幅（下限）
+	.OutDeltaMax =  1000,				// 单次增量变化上限
 };
 
 // 电机2 PID参数
 PID_INC_t Motor_2_PID = {
-	.OutMax      =  4000,				// 输出限幅（上限）
-	.OutMin      = -4000,				// 输出限幅（下限）
-	.OutDeltaMax =   600,				// 单次增量变化上限（≈4%占空比）
+	.OutMax      =  7000,				// 输出限幅（上限）
+	.OutMin      = -7000,				// 输出限幅（下限）
+	.OutDeltaMax =  1000,				// 单次增量变化上限
 };
 
 // 转向控制
 STEER_CTRL_t Steer_Ctrl_PPDD = {
-    .OutMax =  5000,
-    .OutMin = -5000,
+    .OutMax =  7000,
+    .OutMin = -7000,
 };
 
 // 重置PID的所有中间量

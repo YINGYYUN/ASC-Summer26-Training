@@ -698,7 +698,7 @@ int Debug_Motor_PID (void)
 
 
         /* 数据显示 */
-        if (Time_Count2 > 10)// 10 * 10 ms周期
+        if (Time_Count2 >= 10)// 10 * 10 ms周期
         {
             Time_Count2 = 0;
 
@@ -706,7 +706,7 @@ int Debug_Motor_PID (void)
             ips200_printf(58 ,112, "%d  ", enc_cur[2]);
             ips200_printf(58 ,128, "%d  ", (int16_t)Motor_1_PID.Out);
             ips200_printf(58 ,144, "%d  ", (int16_t)Motor_2_PID.Out);
-			printf("%.1f,%.1f,%.1f\n", Motor_1_PID.Actual, Motor_1_PID.Target, Motor_2_PID.Out);
+			printf("%.1f,%.0f,%.0f\n", Motor_1_PID.Actual, Motor_1_PID.Target, Motor_1_PID.Out);
         }
         
         
@@ -835,7 +835,7 @@ int Debug_MT9_Track     (void)
 
                 lose_track_flag = Check_LoseTrack();
                 TrackRecognition_Process();
-                zebra_flag = Check_Zebra();
+                 zebra_flag = Check_Zebra();
 
                 // 计时结束
                 g_track_us = timer_get(TIM_2);

@@ -12,6 +12,13 @@
 static void param_page_init(void)
 {
     menu_reset();       // 清空旧菜单
+	
+	// ---------- 转向控制 PPDD ---------- 
+    Menu_Item *folder_m5 = DynamicCreate_Menu_Folder(&head, "STEER_PPDD");
+    DynamicCreate_Menu_LimitNumber(folder_m5, "KP" , &STEER_PPDD_KP , float_Box, 0, 60);
+    DynamicCreate_Menu_LimitNumber(folder_m5, "KP2", &STEER_PPDD_KP2, float_Box, 0, 20);
+    DynamicCreate_Menu_LimitNumber(folder_m5, "KD" , &STEER_PPDD_KD , float_Box, 0, 20);
+    DynamicCreate_Menu_LimitNumber(folder_m5, "GKD", &STEER_PPDD_GKD, float_Box, 0, 20);
 
 
     // ---------- 偏移量环 PID ----------
@@ -37,13 +44,6 @@ static void param_page_init(void)
     DynamicCreate_Menu_LimitNumber(folder_m4, "KP", &MOTOR2_KP, float_Box, 0, 60);
     DynamicCreate_Menu_LimitNumber(folder_m4, "KI", &MOTOR2_KI, float_Box, 0, 10);
     DynamicCreate_Menu_LimitNumber(folder_m4, "KD", &MOTOR2_KD, float_Box, 0, 20);
-
-    // ---------- 转向控制 PPDD ---------- 
-    Menu_Item *folder_m5 = DynamicCreate_Menu_Folder(&head, "STEER_PPDD");
-    DynamicCreate_Menu_LimitNumber(folder_m5, "KP" , &STEER_PPDD_KP , float_Box, 0, 60);
-    DynamicCreate_Menu_LimitNumber(folder_m5, "KP2", &STEER_PPDD_KP2, float_Box, 0, 20);
-    DynamicCreate_Menu_LimitNumber(folder_m5, "KD" , &STEER_PPDD_KD , float_Box, 0, 20);
-    DynamicCreate_Menu_LimitNumber(folder_m5, "GKD", &STEER_PPDD_GKD, float_Box, 0, 20);
 
     key = head.first_son;   // 光标移到第一项
 }
