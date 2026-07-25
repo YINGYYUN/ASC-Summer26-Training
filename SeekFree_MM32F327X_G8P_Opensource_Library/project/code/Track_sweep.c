@@ -334,8 +334,8 @@ static void calc_steering_value(void)
             && g_track_result.center_line[row] < IMG_W)
         {
             int16 dev = (int16)g_track_result.center_line[row] - IMG_CENTER;               // 该行中线偏离, 单位像素
-//            float w = 1.0f + (float)(BOTTOM_ROW - row) / (float)IMG_H * 0.5f;              // 远处=1.5, 近处=1.0
-            float w = 1.0f + (float)row / (float)IMG_H * 1.5f;                               // 远处=1.0, 近处=2.5
+            float w = 1.0f + (float)(BOTTOM_ROW - row) / (float)IMG_H * 0.5f;              // 远处=1.5, 近处=1.0
+//           float w = 1.0f + (float)row / (float)IMG_H * 1.5f;                               // 远处=1.0, 近处=2.5
             total_dev += dev * w; total_w += w;
         }
     }

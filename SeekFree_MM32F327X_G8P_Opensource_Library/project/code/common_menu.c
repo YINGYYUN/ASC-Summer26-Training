@@ -8,7 +8,7 @@
 
 
 // 静态内存池(用于分配动态创建的菜单)
-#define MENU_MAX_SIZE           (20)
+#define MENU_MAX_SIZE           (24)
 
 static Menu_Item menu_item_arr[MENU_MAX_SIZE];
 static uint8_t menu_arr_index = 0;

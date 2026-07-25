@@ -12,45 +12,62 @@
 #include "zf_common_headfile.h"
 
 // Flash 存储位置(扇区 63 页 3, 256KB Flash 最后 4KB)
-#define PARAM_FLASH_SECTION     (63)
-#define PARAM_FLASH_PAGE        (3)
+#define PARAM_FLASH_SECTION         (63)
+#define PARAM_FLASH_PAGE            (3)
 
 // 参数总数
-#define PARAM_COUNT             (10)
+#define PARAM_COUNT                 (16)
 // 参数缓冲区(Flash 读写的唯一载体)
 extern float param_cache[PARAM_COUNT];
 
 // 参数索引定义(可自由扩展)
 // Motor_1_PID (0-2)  电机1 速度环
-#define MOTOR1_KP_IDX       0
-#define MOTOR1_KI_IDX       1
-#define MOTOR1_KD_IDX       2
+#define MOTOR1_KP_IDX               0
+#define MOTOR1_KI_IDX               1
+#define MOTOR1_KD_IDX               2
 
 // Motor_2_PID (3-5)  电机2 速度环
-#define MOTOR2_KP_IDX       3
-#define MOTOR2_KI_IDX       4
-#define MOTOR2_KD_IDX       5
+#define MOTOR2_KP_IDX               3
+#define MOTOR2_KI_IDX               4
+#define MOTOR2_KD_IDX               5
 
 // Steer_Ctrl_PPDD 转向控制
-#define STEER_KP_IDX        6
-#define STEER_KP2_IDX       7
-#define STEER_KD_IDX        8
-#define STEER_GKD_IDX       9
+#define STEER_PPDD_KP_IDX           6
+#define STEER_PPDD_KP2_IDX          7
+#define STEER_PPDD_KD_IDX           8
+#define STEER_PPDD_GKD_IDX          9
 
+// Steer_PID 偏移量环
+#define STEER_PID_KP_IDX            10
+#define STEER_PID_KI_IDX            11
+#define STEER_PID_KD_IDX            12
+
+// GZ_PID 角速度环
+#define GZ_PID_KP_IDX               13
+#define GZ_PID_KI_IDX               14
+#define GZ_PID_KD_IDX               15
 
 // 便捷访问宏
-#define MOTOR1_KP   param_cache[MOTOR1_KP_IDX]
-#define MOTOR1_KI   param_cache[MOTOR1_KI_IDX]
-#define MOTOR1_KD   param_cache[MOTOR1_KD_IDX]
+#define MOTOR1_KP           param_cache[MOTOR1_KP_IDX]
+#define MOTOR1_KI           param_cache[MOTOR1_KI_IDX]
+#define MOTOR1_KD           param_cache[MOTOR1_KD_IDX]
 
-#define MOTOR2_KP   param_cache[MOTOR2_KP_IDX]
-#define MOTOR2_KI   param_cache[MOTOR2_KI_IDX]
-#define MOTOR2_KD   param_cache[MOTOR2_KD_IDX]
+#define MOTOR2_KP           param_cache[MOTOR2_KP_IDX]
+#define MOTOR2_KI           param_cache[MOTOR2_KI_IDX]
+#define MOTOR2_KD           param_cache[MOTOR2_KD_IDX]
 
-#define STEER_KP    param_cache[STEER_KP_IDX]
-#define STEER_KP2   param_cache[STEER_KP2_IDX]
-#define STEER_KD    param_cache[STEER_KD_IDX]
-#define STEER_GKD   param_cache[STEER_GKD_IDX]
+#define STEER_PPDD_KP       param_cache[STEER_PPDD_KP_IDX]
+#define STEER_PPDD_KP2      param_cache[STEER_PPDD_KP2_IDX]
+#define STEER_PPDD_KD       param_cache[STEER_PPDD_KD_IDX]
+#define STEER_PPDD_GKD      param_cache[STEER_PPDD_GKD_IDX]
+
+#define STEER_PID_KP        param_cache[STEER_PID_KP_IDX]
+#define STEER_PID_KI        param_cache[STEER_PID_KI_IDX]
+#define STEER_PID_KD        param_cache[STEER_PID_KD_IDX]
+
+#define GZ_PID_KP           param_cache[GZ_PID_KP_IDX]
+#define GZ_PID_KI           param_cache[GZ_PID_KI_IDX]
+#define GZ_PID_KD           param_cache[GZ_PID_KD_IDX]
 
 
 void    Param_Init          (void);     // 初始化(加载或设默认值)

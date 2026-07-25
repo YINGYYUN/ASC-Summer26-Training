@@ -104,14 +104,14 @@ void	 STEER_CTRL_Update	(STEER_CTRL_t *p);
 /*[S] PID实例 [S]----------------------------------------*/
 /**********************************************************/
 
-// 位置式
+// 位置式PID
+extern PID_POS_t Steer_PID;		// 偏移量环
+extern PID_POS_t GZ_PID;		// 角速度环 
+// 增量式PID
+extern PID_INC_t Motor_1_PID;	// 电机1 
+extern PID_INC_t Motor_2_PID;	// 电机2 
 
-
-// 增量式
-extern PID_INC_t Motor_1_PID;// 电机1 PID参数
-extern PID_INC_t Motor_2_PID;// 电机2 PID参数
-
-// 转向控制
+// 转向控制PPDD
 extern STEER_CTRL_t Steer_Ctrl_PPDD;
 
 void PID_ALL_Init(void);

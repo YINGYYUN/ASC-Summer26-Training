@@ -5,9 +5,12 @@
 #include "Param_Storage.h"
 
 // 需要引用实际应用参数以完成同步
+
 extern PID_INC_t Motor_1_PID;           // 电机1 PID (左轮)
 extern PID_INC_t Motor_2_PID;           // 电机2 PID (右轮)
-extern STEER_CTRL_t Steer_Ctrl_PPDD;    // 转向控制 PPDD
+extern STEER_CTRL_t Steer_Ctrl_PPDD;    // 转向控制 PPDD  (和下面两个pid使用互斥)
+extern PID_POS_t Steer_PID;		        // 偏移量环 PID
+extern PID_POS_t GZ_PID;		        // 角速度环 PID
 
 
 // 默认参数值(首次使用或恢复出厂设置时使用)
@@ -18,6 +21,10 @@ static const float DEFAULT_PARAMS[PARAM_COUNT] = {
     25.0f, 0.0f, 0.0f,       // KP, KI, KD
     // Steer_Ctrl_PPDD
     25.0f, 0.0f, 0.0f, 1.8f,  // KP, KP2, KD, GKD
+    // Steer_PID
+    0.0f, 0.0f, 0.0f,
+    // GZ_PID
+    0.0f, 0.0f, 0.0f,
 };
 
 // 参数缓存区(菜单直接修改此数组, Flash 读写也通过此数组)
@@ -130,10 +137,18 @@ void Flash_SyncTo_Param(void)
     Motor_2_PID.Ki = MOTOR2_KI;
     Motor_2_PID.Kd = MOTOR2_KD;
 
-    Steer_Ctrl_PPDD.KP = STEER_KP;
-    Steer_Ctrl_PPDD.KP2 = STEER_KP2;
-    Steer_Ctrl_PPDD.KD = STEER_KD;
-    Steer_Ctrl_PPDD.GKD = STEER_GKD;
+    Steer_Ctrl_PPDD.KP = STEER_PPDD_KP;
+    Steer_Ctrl_PPDD.KP2 = STEER_PPDD_KP2;
+    Steer_Ctrl_PPDD.KD = STEER_PPDD_KD;
+    Steer_Ctrl_PPDD.GKD = STEER_PPDD_GKD;
+
+    Steer_PID.Kp = STEER_PID_KP;
+    Steer_PID.Ki = STEER_PID_KI;
+    Steer_PID.Kd = STEER_PID_KD;
+
+    GZ_PID.Kp = GZ_PID_KP;
+    GZ_PID.Ki = GZ_PID_KI;
+    GZ_PID.Kd = GZ_PID_KD;
 }
 /**********************************************************/
 /*----------------------------------------[E] 外部函数 [E]*/

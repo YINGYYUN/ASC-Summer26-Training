@@ -179,10 +179,25 @@ void STEER_CTRL_Update(STEER_CTRL_t *p)
 /*[S] PID实例 [S]----------------------------------------*/
 /**********************************************************/
 
-// 位置式
+// 位置式PID
+// 偏移量环
+PID_POS_t Steer_PID = {
+	.ErrorIntMax = 0,
+	.ErrorIntMin = 0,
+	.OutMax = 40,
+	.OutMin = -40,
+};
+
+// 角速度环
+PID_POS_t GZ_PID = {
+	.ErrorIntMax = 0,
+	.ErrorIntMin = 0,
+	.OutMax = 5000,
+	.OutMin = -5000,
+};
 
 
-// 增量式
+// 增量式PID
 
 // 电机1 PID参数
 PID_INC_t Motor_1_PID = {
@@ -200,13 +215,15 @@ PID_INC_t Motor_2_PID = {
 
 // 转向控制
 STEER_CTRL_t Steer_Ctrl_PPDD = {
-    .OutMax =  4000,
-    .OutMin = -4000,
+    .OutMax =  5000,
+    .OutMin = -5000,
 };
 
 // 重置PID的所有中间量
 void PID_ALL_Init(void)
 {
+	PID_POS_Init(&Steer_PID);
+	PID_POS_Init(&GZ_PID);
 	PID_INC_Init(&Motor_1_PID);    
     PID_INC_Init(&Motor_2_PID);
 	STEER_CTRL_Init(&Steer_Ctrl_PPDD);

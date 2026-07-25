@@ -108,33 +108,44 @@ int main_process(void)
             {
                 imu963ra_get_gyro();
 
-                // 丢线保护：双侧大范围丢线时只用陀螺仪维持姿态
-                if (g_track_result.left_lost_count > 30
-                    && g_track_result.right_lost_count > 30)
-                {
-                    Steer_Ctrl_PPDD.Target = 0;
-                    Steer_Ctrl_PPDD.Actual = 0;
-                }
-                else
-                {
-                    Steer_Ctrl_PPDD.Target = 0;
-                    Steer_Ctrl_PPDD.Actual = g_track_result.steering_value * 20.0f;
-                }
-                Steer_Ctrl_PPDD.Gyro = imu963ra_gyro_z;
-                STEER_CTRL_Update(&Steer_Ctrl_PPDD);
                 // 速度分级：赛道偏差小 → 高速，偏差大 → 低速
                 if (fabs(g_track_result.steering_value) < 1.5f)
                     pwm_base = 1800;
                 else
-                    pwm_base = 1400;
+                    pwm_base = 1700;
 
-                pwm_left  = pwm_base - (int16_t)Steer_Ctrl_PPDD.Out;
-                pwm_right = pwm_base + (int16_t)Steer_Ctrl_PPDD.Out;
+                // // 丢线保护：双侧大范围丢线时只用陀螺仪维持姿态
+                // if (g_track_result.left_lost_count > 30
+                //     && g_track_result.right_lost_count > 30)
+                // {
+                //     Steer_Ctrl_PPDD.Target = 0;
+                //     Steer_Ctrl_PPDD.Actual = 0;
+                // }
+                // else
+                // {
+                //     Steer_Ctrl_PPDD.Target = 0;
+                //     Steer_Ctrl_PPDD.Actual = g_track_result.steering_value * 20.0f;
+                // }
+                // Steer_Ctrl_PPDD.Gyro = imu963ra_gyro_z;
+                // STEER_CTRL_Update(&Steer_Ctrl_PPDD);
+
+                // pwm_left  = pwm_base - (int16_t)Steer_Ctrl_PPDD.Out;
+                // pwm_right = pwm_base + (int16_t)Steer_Ctrl_PPDD.Out;
+
+                Steer_PID.Target = 0;
+                Steer_PID.Actual = g_track_result.steering_value * 20.0f;
+                PID_POS_Update(&Steer_PID);
+                GZ_PID.Target = Steer_PID.Out;
+                GZ_PID.Actual = imu963ra_gyro_transition(imu963ra_gyro_z /100*100);
+                PID_POS_Update(&GZ_PID);
+
+                pwm_left = pwm_base - (int16_t)GZ_PID.Out;
+                pwm_right = pwm_base + (int16_t)GZ_PID.Out;
+
                 if (6000 <= pwm_left)  { pwm_left  =  6000; }
                 if (pwm_left <= -6000) { pwm_left  = -6000; }
                 if (6000 <= pwm_right) { pwm_right =  6000; }
                 if (pwm_right <= -6000){ pwm_right = -6000; }
-
                 Motor_Set(1, pwm_left);
                 Motor_Set(2, pwm_right);
             }
@@ -154,7 +165,9 @@ int main_process(void)
             // 调试：观察赛道偏差和基础速度
             ips200_show_float(0, 160, g_track_result.steering_value, 6, 2);
             ips200_show_uint (120, 160, (uint16)pwm_base, 4);
-            ips200_show_float(0, 176, Steer_Ctrl_PPDD.Out, 6, 2);
+            // ips200_show_float(0, 176, Steer_Ctrl_PPDD.Out, 6, 2);
+            ips200_show_float(0, 176, Steer_PID.Out, 6, 2);
+            ips200_show_float(120, 176, GZ_PID.Out, 6, 2);
         }
     }
 }
