@@ -133,7 +133,7 @@ int main_process(void)
                 // pwm_right = pwm_base + (int16_t)Steer_Ctrl_PPDD.Out;
 
                 Steer_PID.Target = 0;
-                Steer_PID.Actual = g_track_result.steering_value * 20.0f;
+                Steer_PID.Actual = g_track_result.steering_value * 10.0f;
                 PID_POS_Update(&Steer_PID);
                 GZ_PID.Target = Steer_PID.Out;
                 GZ_PID.Actual = imu963ra_gyro_transition(imu963ra_gyro_z /100*100);

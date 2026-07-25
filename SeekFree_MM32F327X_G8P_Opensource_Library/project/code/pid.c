@@ -184,8 +184,8 @@ void STEER_CTRL_Update(STEER_CTRL_t *p)
 PID_POS_t Steer_PID = {
 	.ErrorIntMax = 0,
 	.ErrorIntMin = 0,
-	.OutMax = 40,
-	.OutMin = -40,
+	.OutMax = 800,
+	.OutMin = -800,
 };
 
 // 角速度环
