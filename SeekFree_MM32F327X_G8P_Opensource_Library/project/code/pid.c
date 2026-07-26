@@ -196,7 +196,6 @@ PID_POS_t GZ_PID = {
 	.OutMin = -5000,
 };
 
-
 // 增量式PID
 
 // 电机1 PID参数
@@ -215,8 +214,8 @@ PID_INC_t Motor_2_PID = {
 
 // 转向控制
 STEER_CTRL_t Steer_Ctrl_PPDD = {
-    .OutMax =  7000,
-    .OutMin = -7000,
+    .OutMax =  8000,
+    .OutMin = -8000,
 };
 
 // 重置PID的所有中间量

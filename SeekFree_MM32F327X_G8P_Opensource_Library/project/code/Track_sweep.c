@@ -187,7 +187,7 @@ uint8 Check_Zebra(void)
 // 最长白列（从底部向上，中心区域找白色段最长的列）
 // ============================================================
 #define OTSU_COL_SAMPLE_STEP  5
-#define HALF_WIDTH_FALLBACK   90
+#define HALF_WIDTH_FALLBACK   40   // 赛道半宽 (全宽=80)
 #define DRAW_YS_MAX           271
 #define DRAW_WIDTH            1    // 边界绘制宽度 1~3
 
@@ -210,6 +210,7 @@ static int16 otsu_longest_white_col(void)
 static void sweep_boundaries(void)
 {
     uint8 th = s_otsu_threshold;
+    static int16 s_last_valid_width = HALF_WIDTH_FALLBACK * 2;  // 兜底：未记录到有效宽度时使用
 
     g_track_result.valid_rows = 0;
 
@@ -222,16 +223,19 @@ static void sweep_boundaries(void)
     int16 r = seed;
     while (r < IMG_W - 3 && mt9v03x_image[BOTTOM_ROW][r + 1] > th) r++;
 
-    g_track_result.left_boundary[BOTTOM_ROW]  = l;
-    g_track_result.right_boundary[BOTTOM_ROW] = r;
+    // 扫到图像边缘视为丢线
+    g_track_result.left_boundary[BOTTOM_ROW]  = (l <= 2) ? -1 : l;
+    g_track_result.right_boundary[BOTTOM_ROW] = (r >= IMG_W - 3) ? -1 : r;
 
-    if (l < r)
+    if (l >= 0 && r >= 0 && l < r)
     {
         g_track_result.center_line[BOTTOM_ROW] = (l + r) / 2;
         g_track_result.valid_rows++;
+        s_last_valid_width = r - l;
     }
 
     int16 prev_l = l, prev_r = r;
+    uint8 lost_consecutive = 0;  // 连续双边都丢的行数
 
     // ---- 上行：从上一行边界 + 偏移开始，白黑黑判定 ----
     for (int16 row = BOTTOM_ROW - 1; row >= 0; row--)
@@ -241,7 +245,6 @@ static void sweep_boundaries(void)
         if (l > IMG_W - 4) l = IMG_W - 4;
         if (mt9v03x_image[row][l] > th)
         {
-            // 起点在白区，向左找白黑黑
             while (l > 2
                 && !(mt9v03x_image[row][l - 1] <= th
                   && mt9v03x_image[row][l - 2] <= th))
@@ -249,7 +252,6 @@ static void sweep_boundaries(void)
         }
         else
         {
-            // 起点在黑区，用全局最长白列 seed 重定位
             l = seed;
             while (l > 2
                 && !(mt9v03x_image[row][l - 1] <= th
@@ -262,7 +264,6 @@ static void sweep_boundaries(void)
         if (r < 2) r = 2;
         if (mt9v03x_image[row][r] > th)
         {
-            // 起点在白区，向右找白黑黑
             while (r < IMG_W - 3
                 && !(mt9v03x_image[row][r + 1] <= th
                   && mt9v03x_image[row][r + 2] <= th))
@@ -270,13 +271,16 @@ static void sweep_boundaries(void)
         }
         else
         {
-            // 起点在黑区，用全局最长白列 seed 重定位
             r = seed;
             while (r < IMG_W - 3
                 && !(mt9v03x_image[row][r + 1] <= th
                   && mt9v03x_image[row][r + 2] <= th))
                 r++;
         }
+
+        // 扫到图像边缘视为丢线
+        if (l <= 2) l = -1;
+        if (r >= IMG_W - 3) r = -1;
 
         g_track_result.left_boundary[row]  = l;
         g_track_result.right_boundary[row] = r;
@@ -285,16 +289,46 @@ static void sweep_boundaries(void)
         {
             g_track_result.center_line[row] = (l + r) / 2;
             g_track_result.valid_rows++;
+            s_last_valid_width = r - l;   // 记住最近有效路宽
             prev_l = l;
             prev_r = r;
         }
         else if (l >= 0)
         {
-            g_track_result.center_line[row] = l + HALF_WIDTH_FALLBACK;
+            g_track_result.center_line[row] = l + s_last_valid_width / 2;
         }
         else if (r >= 0)
         {
-            g_track_result.center_line[row] = r - HALF_WIDTH_FALLBACK;
+            g_track_result.center_line[row] = r - s_last_valid_width / 2;
+        }
+
+        // 双边都丢：先区分是"真黑区"还是"全白无边缘"(如十字)
+        // 采样中心区域，存在白像素则不视为黑区
+        if (l < 0 && r < 0)
+        {
+            prev_l = seed;
+            prev_r = seed;
+
+            uint8 is_black_zone = 1;  // 默认是黑区
+            for (int16 chk = IMG_W / 4; chk <= IMG_W * 3 / 4; chk += OTSU_COL_SAMPLE_STEP)
+            {
+                if (mt9v03x_image[row][chk] > th)
+                { is_black_zone = 0; break; }  // 有白像素 → 不是黑区
+            }
+
+            if (is_black_zone)
+            {
+                if (++lost_consecutive >= 5)   // 连续 5 行真黑区，停止向上扫
+                    break;
+            }
+            else
+            {
+                lost_consecutive = 0;
+            }
+        }
+        else
+        {
+            lost_consecutive = 0;
         }
     }
 
@@ -316,26 +350,38 @@ static void sweep_boundaries(void)
 
 // ============================================================
 // 转角计算（加权平均中线偏差，单位：像素）
+// 从底部最近的有效行开始往上计算
 // steering_value = Σ(每行中线偏离图像中心距离 × 权重) / Σ权重
-// 高速模式下权重偏向远处：远处=1.5，近处=1.0，尝试提前转向
 // 结果：0=直道  >0=右弯  <0=左弯  典型值 0~40
 // ============================================================
 static void calc_steering_value(void)
 {
-    if (g_track_result.valid_rows == 0)
-    { g_track_result.steering_value = 0.0f; return; }
-
-    float total_dev = 0.0f, total_w = 0.0f;
+    // 找到底部第一个存在左或右边界的行作为起点
+    int16 start_row = -1;
     for (int16 row = BOTTOM_ROW; row >= 0; row--)
     {
         if (g_track_result.left_boundary[row] >= 0
-            && g_track_result.right_boundary[row] >= 0
-            && g_track_result.center_line[row] >= 0
-            && g_track_result.center_line[row] < IMG_W)
+            || g_track_result.right_boundary[row] >= 0)
         {
-            int16 dev = (int16)g_track_result.center_line[row] - IMG_CENTER;               // 该行中线偏离, 单位像素
-            // float w = 1.0f + (float)(BOTTOM_ROW - row) / (float)IMG_H * 2.0f;              // 远处≈8.0, 近处=1.0
-             float w = 2.0f + (float)row / (float)IMG_H * 0.5f;                               // 远处=1.0, 近处=2.5
+            start_row = row;
+            break;
+        }
+    }
+
+    if (start_row < 0)
+    { g_track_result.steering_value = 0.0f; return; }
+
+    float total_dev = 0.0f, total_w = 0.0f;
+    for (int16 row = start_row; row >= 0; row--)
+    {
+        if (g_track_result.center_line[row] >= 0
+            && g_track_result.center_line[row] < IMG_W
+            && (g_track_result.left_boundary[row] >= 0
+                || g_track_result.right_boundary[row] >= 0))
+        {
+            int16 dev = (int16)g_track_result.center_line[row] - IMG_CENTER;
+            // 原权重(近处大): float w = 1.0f + (float)row / (float)IMG_H * 2.0f;
+            float w = 1.5f + (float)row / (float)IMG_H * 0.5f;                       // 远处=2.0, 近处=2.5
             total_dev += dev * w; total_w += w;
         }
     }

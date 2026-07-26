@@ -109,23 +109,14 @@ int main_process(void)
                 imu963ra_get_gyro();
 
                 // 速度分级：赛道偏差小 → 高速，偏差大 → 低速
-                if (fabs(g_track_result.steering_value) < 1.5f)
+                if (fabs(g_track_result.steering_value) < 10.0f)
                     pwm_base = 1800;
                 else
-                    pwm_base = 1600;
+                    pwm_base = 1800;
 
-                // 丢线保护：双侧大范围丢线时只用陀螺仪维持姿态
-                if (g_track_result.left_lost_count > 30
-                    && g_track_result.right_lost_count > 30)
-                {
-                    Steer_Ctrl_PPDD.Target = 0;
-                    Steer_Ctrl_PPDD.Actual = 0;
-                }
-                else
-                {
-                    Steer_Ctrl_PPDD.Target = 0;
-                    Steer_Ctrl_PPDD.Actual = g_track_result.steering_value * 20.0f;
-                }
+				Steer_Ctrl_PPDD.Target = 0;
+				Steer_Ctrl_PPDD.Actual = g_track_result.steering_value * 20.0f;
+                
                 Steer_Ctrl_PPDD.Gyro = (imu963ra_gyro_z + 7)/20*20;
                 STEER_CTRL_Update(&Steer_Ctrl_PPDD);
 
@@ -142,10 +133,10 @@ int main_process(void)
                 // pwm_left = pwm_base - (int16_t)GZ_PID.Out;
                 // pwm_right = pwm_base + (int16_t)GZ_PID.Out;
 
-                if (7000 <= pwm_left)  { pwm_left  =  7000; }
-                if (pwm_left <= -7000) { pwm_left  = -7000; }
-                if (7000 <= pwm_right) { pwm_right =  7000; }
-                if (pwm_right <= -7000){ pwm_right = -7000; }
+                if (8000 <= pwm_left)  { pwm_left  =  8000; }
+                if (pwm_left <= -8000) { pwm_left  = -8000; }
+                if (8000 <= pwm_right) { pwm_right =  8000; }
+                if (pwm_right <= -8000){ pwm_right = -8000; }
                 Motor_Set(1, pwm_left);
                 Motor_Set(2, pwm_right);
             }
