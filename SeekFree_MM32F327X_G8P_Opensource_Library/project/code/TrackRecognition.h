@@ -23,8 +23,6 @@ extern TrackResult_t g_track_result;
 uint8 Check_LoseTrack               (void);
 // 起止点(斑马线)识别
 uint8 Check_Zebra                   (void);
-// 调试：采样行平均跳变次数
-extern uint8 g_zebra_avg_edges;
 // 赛道识别初始化
 void  TrackRecognition_Init         (void);
 // 赛道识别进程

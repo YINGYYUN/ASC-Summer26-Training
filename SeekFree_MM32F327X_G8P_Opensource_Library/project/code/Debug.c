@@ -835,7 +835,7 @@ int Debug_MT9_Track     (void)
 
                 lose_track_flag = Check_LoseTrack();
                 TrackRecognition_Process();
-                 zebra_flag = Check_Zebra();
+                zebra_flag = Check_Zebra();
 
                 // 计时结束
                 g_track_us = timer_get(TIM_2);
@@ -844,7 +844,7 @@ int Debug_MT9_Track     (void)
         }
 
 
-        if (Time_Count2 >= 15)// 10ms * 15 显示周期
+        if (Time_Count2 >= 20)// 10ms * 20 显示周期
         {
             Time_Count2 = 0;
 
@@ -866,16 +866,19 @@ int Debug_MT9_Track     (void)
                 ips200_show_string(48 ,208, "N");
             }
             // 显示是否寻找到斑马线
-            if (zebra_flag)
+            // 实际上由于显示频率有限制，并不好捕捉zebra_flag == 1
+            if (zebra_flag == 1)
             {
-                ips200_show_string(48 ,224, "Y");
+                ips200_show_string(48 ,224, "Y1");
+            }
+            else if (zebra_flag == 2)
+            {
+                ips200_show_string(48 ,224, "2");
             }
             else
             {
-                ips200_show_string(48 ,224, "N");
+                ips200_show_string(48 ,224, "N ");
             }
-            // 调试：显示采样行平均跳变值
-            ips200_show_uint(120, 224, (uint16)g_zebra_avg_edges, 3);
         }
     }
 }

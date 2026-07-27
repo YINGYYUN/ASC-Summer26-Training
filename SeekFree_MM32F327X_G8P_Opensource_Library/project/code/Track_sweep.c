@@ -147,40 +147,77 @@ uint8 Check_LoseTrack(void)
 // 采样,统计黑白跳变的次数
 // ============================================================
 
-// 斑马线检测 — 较集中的稀疏采样，统计黑白跳变次数
-#define ZEBRA_SAMPLE_ROWS     4
-#define ZEBRA_EDGE_MIN        8      // 单行跳变 > 8 → 异常
-#define ZEBRA_EXCEPT_MIN      3      // 异常行 ≥ 3 → 判定为斑马线
+// 斑马线检测 — 状态机 + 底行 WBB 模式计数，防止同一片斑马线被多次统计
+// 返回: 0=无斑马线  1=首次遇到(本次斑马线的第一帧)  2=仍在斑马线中
+#define ZEBRA_CHECK_ROWS       3      // 检测底部 3 行   
+#define ZEBRA_GUARD_OFFSET     30     // 距底 30 行处须双边存在
 
-uint8 g_zebra_avg_edges = 0;        // 调试：采样行的平均跳变次数
+
+#define ZEBRA_STATE_IDLE      0
+#define ZEBRA_STATE_ENTER     1
+#define ZEBRA_STATE_INSIDE    2
 
 uint8 Check_Zebra(void)
 {
     uint8 threshold = TrackRecognition_GetThreshold();
-    uint8 abnormal_rows = 0;
-    uint16 total_edges = 0;
 
-    for (uint8 i = 0; i < ZEBRA_SAMPLE_ROWS; i++)
+    // ---- 基本条件：距底 30 行处双边存在 ----
+    int16 guard_row = BOTTOM_ROW - ZEBRA_GUARD_OFFSET;  // row 89
+    if (!(g_track_result.left_boundary[guard_row] >= 0
+       && g_track_result.right_boundary[guard_row] >= 0
+       && g_track_result.left_boundary[guard_row] < g_track_result.right_boundary[guard_row]))
     {
-        int16 row = 40 + i ;     // 行 40, 41, 42, 43
-        uint8 edges = 0;
-        uint8 prev = (mt9v03x_image[row][5] > threshold);
-
-        for (int16 col = 6; col < IMG_W - 5; col++)
-        {
-            uint8 cur = (mt9v03x_image[row][col] > threshold);
-            if (cur != prev) edges++;
-            prev = cur;
-        }
-
-        total_edges += edges;
-
-        if (edges > ZEBRA_EDGE_MIN)
-        { abnormal_rows++; }
+        return 0;
     }
 
-    g_zebra_avg_edges = (uint8)(total_edges / ZEBRA_SAMPLE_ROWS);
-    return (abnormal_rows >= ZEBRA_EXCEPT_MIN) ? 1 : 0;
+    // ---- WBB 模式检测：底部 3 行 ----
+    uint8 zebra_now = 0;
+
+    for (uint8 i = 0; i < ZEBRA_CHECK_ROWS; i++)
+    {
+        int16 row = BOTTOM_ROW - i;     // 行 119, 118, 117
+        uint8 wbb_count = 0;
+
+        for (int16 col = 0; col < IMG_W - 2; col++)
+        {
+            // 白黑黑模式
+            if (mt9v03x_image[row][col] > threshold
+             && mt9v03x_image[row][col + 1] <= threshold
+             && mt9v03x_image[row][col + 2] <= threshold)
+            {
+                wbb_count++;
+            }
+        }
+        // 单行 WBB 模式 ≥ 4 → 斑马线
+        if (wbb_count >= 4)
+        { zebra_now = 1; break; }
+    }
+
+    // ---- 状态机 ----
+    static uint8 s_zebra_state = ZEBRA_STATE_IDLE;
+
+    switch (s_zebra_state)
+    {
+        case ZEBRA_STATE_IDLE:
+            if (zebra_now)
+            { s_zebra_state = ZEBRA_STATE_ENTER; return 1; }
+            return 0;
+
+        case ZEBRA_STATE_ENTER:
+            if (zebra_now)
+            { s_zebra_state = ZEBRA_STATE_INSIDE; return 2; }
+            s_zebra_state = ZEBRA_STATE_IDLE;
+            return 0;
+
+        case ZEBRA_STATE_INSIDE:
+            if (zebra_now) return 2;
+            s_zebra_state = ZEBRA_STATE_IDLE;
+            return 0;
+
+        default:
+            s_zebra_state = ZEBRA_STATE_IDLE;
+            return 0;
+    }
 }
 
 // ============================================================

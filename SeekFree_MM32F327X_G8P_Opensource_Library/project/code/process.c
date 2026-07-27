@@ -34,6 +34,8 @@ int main_process(void)
     int16_t pwm_left  = 0;
     int16_t pwm_right = 0;
 
+    uint8_t Zebra_Zone_Count = 0;
+
     ips200_show_string(8  ,0  , "[Process]");
     ips200_show_string(0  ,16 , "==============================");
     
@@ -81,6 +83,8 @@ int main_process(void)
             PID_ALL_Init();
             // 识别结果初始化
             TrackRecognition_Init();
+            // 斑马线计数重置
+            Zebra_Zone_Count = 0;
             // 切换到空闲状态，防止反复触发停车相关代码
             car_state = Car_IDLE;
             // 加快流程,只会在屏幕指示IDLE状态,STOP状态跳过
@@ -102,6 +106,17 @@ int main_process(void)
                     car_state = Car_Stop;
                 }
                 TrackRecognition_Process();
+                if (Check_Zebra() == 1)
+                {
+                    Zebra_Zone_Count ++;
+                    
+                    // 如果经过了 n 次斑马线
+                    if (Zebra_Zone_Count >= 2)
+                    {
+                        // 停车
+                        car_state = Car_Stop;
+                    }
+                }
             }
 
             if (car_state == Car_Running)
