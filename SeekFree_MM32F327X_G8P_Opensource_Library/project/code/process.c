@@ -110,9 +110,9 @@ int main_process(void)
 
                 // 速度分级：赛道偏差小 → 高速，偏差大 → 低速
                 if (fabs(g_track_result.steering_value) < 10.0f)
-                    pwm_base = 1800;
+                    pwm_base = 2000;
                 else
-                    pwm_base = 1800;
+                    pwm_base = 2000;
 
 				Steer_Ctrl_PPDD.Target = 0;
 				Steer_Ctrl_PPDD.Actual = g_track_result.steering_value * 20.0f;

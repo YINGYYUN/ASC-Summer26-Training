@@ -62,7 +62,7 @@ typedef struct {
 
 
 // 转向控制结构体（非线性PID + 陀螺仪前馈）
-// 公式: Out = Error*KP + Error*|Error|*KP2 + (Error-LastError)*KD + Gyro*GKD
+// 公式: Out = Error*KP + Error*|Error|*KP2 + (Error-LastError)*KD - Gyro*GKD
 typedef struct {
 	float Target;			// 目标
 	float Actual;			// 当前实际（图像偏差）

@@ -108,7 +108,7 @@ static uint8 otsu_find_threshold(void)
 #define LOSE_TRACK_COL_LEFT   		70
 #define LOSE_TRACK_COL_RIGHT  		117
 #define LOSE_TRACK_ROW_START  		115           // 从第115行开始(近处)
-#define LOSE_TRACK_FRAME_CNT    	5           // 连续 CNT 帧触发才判定出界
+#define LOSE_TRACK_FRAME_CNT    	3           // 连续 CNT 帧触发才判定出界
 
 #define LOSE_TRACK_CHECK_TOTAL      ((BOTTOM_ROW - LOSE_TRACK_ROW_START + 1)  * (LOSE_TRACK_COL_RIGHT - LOSE_TRACK_COL_LEFT + 1)) 
 
@@ -206,6 +206,7 @@ static int16 otsu_longest_white_col(void)
 // 逐行扫描：底行从种子起扫，上行从上一行边界偏移起扫
 // ============================================================
 #define SWEEP_OFFSET  10   // 上行搜索起点向内偏移量
+#define SWEEP_MAX_ROWS 90   // 只扫近处行数，row 30~119
 
 static void sweep_boundaries(void)
 {
@@ -213,6 +214,9 @@ static void sweep_boundaries(void)
     static int16 s_last_valid_width = HALF_WIDTH_FALLBACK * 2;  // 兜底：未记录到有效宽度时使用
 
     g_track_result.valid_rows = 0;
+
+    int16 sweep_end_row = IMG_H - SWEEP_MAX_ROWS;  // row 30, 只扫到这里
+    if (sweep_end_row < 0) sweep_end_row = 0;
 
     // 最长白列种子
     int16 seed = otsu_longest_white_col();
@@ -236,9 +240,10 @@ static void sweep_boundaries(void)
 
     int16 prev_l = l, prev_r = r;
     uint8 lost_consecutive = 0;  // 连续双边都丢的行数
+    int16 clean_from = sweep_end_row;  // sweep_end_row 以上行未扫描，需清除上帧残留
 
     // ---- 上行：从上一行边界 + 偏移开始，白黑黑判定 ----
-    for (int16 row = BOTTOM_ROW - 1; row >= 0; row--)
+    for (int16 row = BOTTOM_ROW - 1; row >= sweep_end_row; row--)
     {
         // 左边界：从 prev_l + OFFSET（向内移）向左扫
         l = prev_l + SWEEP_OFFSET;
@@ -301,6 +306,11 @@ static void sweep_boundaries(void)
         {
             g_track_result.center_line[row] = r - s_last_valid_width / 2;
         }
+        else
+        {
+            // 双边都丢：清除上帧残留的中线，绘制时不显示
+            g_track_result.center_line[row] = IMG_CENTER;
+        }
 
         // 双边都丢：先区分是"真黑区"还是"全白无边缘"(如十字)
         // 采样中心区域，存在白像素则不视为黑区
@@ -319,7 +329,7 @@ static void sweep_boundaries(void)
             if (is_black_zone)
             {
                 if (++lost_consecutive >= 5)   // 连续 5 行真黑区，停止向上扫
-                    break;
+                { clean_from = row; break; }
             }
             else
             {
@@ -329,6 +339,17 @@ static void sweep_boundaries(void)
         else
         {
             lost_consecutive = 0;
+        }
+    }
+
+    // 清除 break 后未扫描行的上帧残留数据（否则绘制时会显示旧边线）
+    if (clean_from > 0)
+    {
+        for (int16 i = clean_from - 1; i >= 0; i--)
+        {
+            g_track_result.left_boundary[i]  = -1;
+            g_track_result.right_boundary[i] = -1;
+            g_track_result.center_line[i]    = IMG_CENTER;
         }
     }
 
@@ -350,15 +371,23 @@ static void sweep_boundaries(void)
 
 // ============================================================
 // 转角计算（加权平均中线偏差，单位：像素）
-// 从底部最近的有效行开始往上计算
+// 只使用图像近处 90 行（row 30~119），远处噪声大不参与计算
 // steering_value = Σ(每行中线偏离图像中心距离 × 权重) / Σ权重
 // 结果：0=直道  >0=右弯  <0=左弯  典型值 0~40
 // ============================================================
+#define STEER_NEAR_ROWS  90   // 只取近处行数
+// 权重
+#define STEER_W_MAX   2.5f    // 作为起点的权重
+#define STEER_W_MIN   2.0f    // 到远端的权重
+
 static void calc_steering_value(void)
 {
-    // 找到底部第一个存在左或右边界的行作为起点
+    int16 end_row = IMG_H - STEER_NEAR_ROWS;  // 只算 row >= end_row 的行
+    if (end_row < 0) end_row = 0;
+
+    // 找到"近处范围内"底部第一个存在左或右边界的行作为起点
     int16 start_row = -1;
-    for (int16 row = BOTTOM_ROW; row >= 0; row--)
+    for (int16 row = BOTTOM_ROW; row >= end_row; row--)
     {
         if (g_track_result.left_boundary[row] >= 0
             || g_track_result.right_boundary[row] >= 0)
@@ -368,11 +397,19 @@ static void calc_steering_value(void)
         }
     }
 
-    if (start_row < 0)
-    { g_track_result.steering_value = 0.0f; return; }
+    // 有效性检验
+    if (start_row < 0 || start_row <= end_row)
+    {
+        g_track_result.steering_value = 0.0f;
+        return;
+    }
 
+    // 只算一次：每往上一行，权重减少多少
+    float step = (STEER_W_MAX - STEER_W_MIN) / (float)(start_row - end_row);
+    float w = STEER_W_MAX;
     float total_dev = 0.0f, total_w = 0.0f;
-    for (int16 row = start_row; row >= 0; row--)
+
+    for (int16 row = start_row; row >= end_row; row--)
     {
         if (g_track_result.center_line[row] >= 0
             && g_track_result.center_line[row] < IMG_W
@@ -380,10 +417,11 @@ static void calc_steering_value(void)
                 || g_track_result.right_boundary[row] >= 0))
         {
             int16 dev = (int16)g_track_result.center_line[row] - IMG_CENTER;
-            // 原权重(近处大): float w = 1.0f + (float)row / (float)IMG_H * 2.0f;
-            float w = 1.5f + (float)row / (float)IMG_H * 0.5f;                       // 远处=2.0, 近处=2.5
-            total_dev += dev * w; total_w += w;
+            total_dev += dev * w;
+            total_w   += w;
         }
+        w -= step; // 下一行(更远处)线性递减
+        if (w < STEER_W_MIN) w = STEER_W_MIN;
     }
     g_track_result.steering_value = (total_w > 0.0f) ? (total_dev / total_w) : 0.0f;
 }
