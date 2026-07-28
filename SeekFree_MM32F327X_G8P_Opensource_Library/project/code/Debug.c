@@ -24,6 +24,7 @@ void Debug_Page_Menu_UI(uint8_t Page)
             ips200_show_string(10 ,80 , "MT9V03x");         // 总钻风图像显示
             ips200_show_string(10 ,96 , "MT9-Track");       // 赛道识别
             ips200_show_string(10 ,112, "IMU");             // IMU963RA调试
+            ips200_show_string(10 ,128, "Remote-Crtl");     // 遥控 (使用蓝牙+江协的蓝牙助手)
 		
 			break;
 	}
@@ -123,6 +124,21 @@ void Debug_IMU_UI(void)
     ips200_show_string(0  ,240, "Yaw:NaN");
     ips200_show_string(0  ,256, "Pih:NaN");
 }
+
+void Debug_Remote_Crtl_UI(void)
+{
+    ips200_show_string(8  ,0  , "[DEBUG]-Remote_Crtl");
+    ips200_show_string(0  ,16 , "==============================");
+    ips200_show_string(0  ,48 , "LH:");
+    ips200_show_string(72 ,48 , "LV:");
+    ips200_show_string(0  ,64 , "RH:");
+    ips200_show_string(72 ,64 , "RV:");
+    ips200_show_string(0  ,80 , "TAR L:");
+    ips200_show_string(104,80 , "R:");
+    ips200_show_string(0  ,96 , "ENC L:");
+    ips200_show_string(104,96 , "R:");
+}
+// [三级界面]遥控界面
 /**********************************************************/
 /*----------------------------------------[E] 界面样式 [E]*/
 /**********************************************************/
@@ -139,7 +155,7 @@ int Debug_Motor_PID     (void);
 int Debug_MT9V03x       (void);
 int Debug_MT9_Track     (void);
 int Debug_IMU           (void);
-
+int Debug_Remote_Crtl   (void);
 
 // [二级界面]Debug模式界面
 int Debug_Page_Menu(void)
@@ -164,14 +180,14 @@ int Debug_Page_Menu(void)
             key_clear_state(KEY_UP);
             key_pressed = 1;
             Debug_Page_flag --;
-            if (Debug_Page_flag < 1)Debug_Page_flag = 6;
+            if (Debug_Page_flag < 1)Debug_Page_flag = 7;
         }
         else if (KEY_SHORT_PRESS == key_get_state(KEY_DOWN))
         {
             key_clear_state(KEY_DOWN); 
             key_pressed = 1;
             Debug_Page_flag ++;
-            if (Debug_Page_flag > 6)Debug_Page_flag = 1;
+            if (Debug_Page_flag > 7)Debug_Page_flag = 1;
         }
         else if (KEY_SHORT_PRESS == key_get_state(KEY_CONFIRM))
         {
@@ -247,6 +263,16 @@ int Debug_Page_Menu(void)
             Debug_Page_Menu_UI(1);
             ips200_show_string(0  ,112, ">");
         }
+        else if (Debug_Page_flag_temp == 7)
+        {
+            ips200_clear();
+            Debug_Remote_Crtl();
+            
+            // 从子界面返回后
+            ips200_clear();
+            Debug_Page_Menu_UI(1);
+            ips200_show_string(0  ,112, ">");
+        }
 
         
         /* 显示更新*/
@@ -259,6 +285,7 @@ int Debug_Page_Menu(void)
 			ips200_show_string(0  ,80 , " ");
 			ips200_show_string(0  ,96 , " ");
             ips200_show_string(0  ,112, " ");
+            ips200_show_string(0  ,128, " ");
 			// 显示光标
 			ips200_show_string(0  ,16 + 16*Debug_Page_flag , ">");
         }
@@ -597,8 +624,8 @@ int Debug_Motor_PID (void)
                 if (KEY_SHORT_PRESS == key_get_state(KEY_UP))
                 {
                     key_clear_state(KEY_UP);
-                    enc_tar[Debug_M_P_f] += 15;
-                    if (enc_tar[Debug_M_P_f] > 500)enc_tar[Debug_M_P_f] = 500;
+                    enc_tar[Debug_M_P_f] += 25;
+                    if (enc_tar[Debug_M_P_f] > 800)enc_tar[Debug_M_P_f] = 800;
                     Motor_1_PID.Target = enc_tar[1];
                     Motor_2_PID.Target = enc_tar[2];
                     ips200_printf(58 ,32 + 16*Debug_M_P_f, "%d  ", enc_tar[Debug_M_P_f]);
@@ -606,8 +633,8 @@ int Debug_Motor_PID (void)
                 else if (KEY_SHORT_PRESS == key_get_state(KEY_DOWN))
                 {
                     key_clear_state(KEY_DOWN);
-                    enc_tar[Debug_M_P_f] -= 15;
-                    if (enc_tar[Debug_M_P_f] < -500)enc_tar[Debug_M_P_f] = -500;
+                    enc_tar[Debug_M_P_f] -= 25;
+                    if (enc_tar[Debug_M_P_f] < -800)enc_tar[Debug_M_P_f] = -800;
                     Motor_1_PID.Target = enc_tar[1];
                     Motor_2_PID.Target = enc_tar[2];
                     ips200_printf(58 ,32 + 16*Debug_M_P_f, "%d  ", enc_tar[Debug_M_P_f]);
@@ -934,6 +961,82 @@ int Debug_IMU (void)
             // ips200_printf(24 ,192, "%d   ", imu963ra_mag_z);
 
             ips200_printf(32 ,256, "%.2f  ", Pitch_Result);
+        }
+    }
+}
+
+
+int Debug_Remote_Crtl   (void)
+{
+    #define REMOTE_BASE_SPEED 800                                              // 蓝牙遥控最大速度(编码器脉冲/10ms)
+
+    Debug_Remote_Crtl_UI();
+
+    int8_t LH = 0, LV = 0, RH = 0, RV = 0;
+    int16_t tar_left = 0, tar_right = 0;
+
+    Motor_ALL_Zero();
+    Speed_PID_Crtl_Enable = 1;
+
+    while(1)
+    {
+        /* 按键处理 */
+        key_clear_state(KEY_UP);
+        key_clear_state(KEY_DOWN);
+        key_clear_state(KEY_CONFIRM);
+        if (KEY_SHORT_PRESS == key_get_state(KEY_BACK))
+        {
+            key_clear_state(KEY_BACK);
+
+            // 停止电机，关闭 PID，返回上一级界面
+            Speed_PID_Crtl_Enable = 0;
+            Motor_ALL_Zero();
+            ips200_clear();
+            return 0;
+        }
+
+        /* 接收处理 — 解析蓝牙助手 joystick 帧 [joystick,LH,LV,RH,RV] */
+        {
+            char *frame = uart_query_frame(UART_6);
+            if(frame)
+            {
+                char *tag = strtok(frame, ",");
+                if(tag && strcmp(tag, "joystick") == 0)
+                {
+                    LH = (int8_t)atoi(strtok(NULL, ","));
+                    LV = (int8_t)atoi(strtok(NULL, ","));
+                    RH = (int8_t)atoi(strtok(NULL, ","));
+                    RV = (int8_t)atoi(strtok(NULL, ","));
+
+                    // 差速映射：LV=油门(前后) RH=转向(左右)
+                    tar_left  = (int16_t)(LV * REMOTE_BASE_SPEED / 100 + RH * REMOTE_BASE_SPEED / 100);
+                    tar_right = (int16_t)(LV * REMOTE_BASE_SPEED / 100 - RH * REMOTE_BASE_SPEED / 100);
+
+                    // 限幅
+                    if(tar_left  >  REMOTE_BASE_SPEED) tar_left  =  REMOTE_BASE_SPEED;
+                    if(tar_left  < -REMOTE_BASE_SPEED) tar_left  = -REMOTE_BASE_SPEED;
+                    if(tar_right >  REMOTE_BASE_SPEED) tar_right =  REMOTE_BASE_SPEED;
+                    if(tar_right < -REMOTE_BASE_SPEED) tar_right = -REMOTE_BASE_SPEED;
+
+                    Motor_1_PID.Target = tar_left;
+                    Motor_2_PID.Target = tar_right;
+                }
+            }
+        }
+
+        /* 显示更新 */
+        if (Time_Count2 >= 25)                                                  // 10ms * 25 = 250ms 周期
+        {
+            Time_Count2 = 0;
+
+            ips200_printf(24 ,48 , "%4d  ", LH);
+            ips200_printf(96 ,48 , "%4d  ", LV);
+            ips200_printf(24 ,64 , "%4d  ", RH);
+            ips200_printf(96 ,64 , "%4d  ", RV);
+            ips200_printf(48 ,80 , "%-5d ", tar_left);
+            ips200_printf(120,80 , "%-5d ", tar_right);
+            ips200_printf(48 ,96 , "%-5d ", (int16_t)Motor_1_PID.Actual);
+            ips200_printf(120,96 , "%-5d ", (int16_t)Motor_2_PID.Actual);
         }
     }
 }

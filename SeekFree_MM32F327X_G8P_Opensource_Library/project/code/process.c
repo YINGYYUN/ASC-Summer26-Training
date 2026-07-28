@@ -23,6 +23,8 @@ int main_process(void)
     // 电机速度重置
     Motor_ALL_Zero();
 
+    Speed_PID_Crtl_Enable = 0;
+
     // 识别结果初始化
     TrackRecognition_Init();
 
@@ -30,9 +32,9 @@ int main_process(void)
     Time_Count1 = 0;
     Time_Count2 = 0;
 
-    int16_t pwm_base = 0;
-    int16_t pwm_left  = 0;
-    int16_t pwm_right = 0;
+    int16_t Speed_base = 0;
+    int16_t Tar_Left   = 0;
+    int16_t Tar_Right  = 0;
 
     uint8_t Zebra_Zone_Count = 0;
 
@@ -58,6 +60,7 @@ int main_process(void)
             // 发车
             car_state = Car_Running;
             ips200_show_string(48 ,192, "Run~");
+            Speed_PID_Crtl_Enable = 1;
         }
         else if (KEY_SHORT_PRESS == key_get_state(KEY_BACK))
         {
@@ -126,18 +129,18 @@ int main_process(void)
 
                 // 速度分级：赛道偏差小 → 高速，偏差大 → 低速
                 if (fabs(g_track_result.steering_value) < 10.0f)
-                    pwm_base = 2000;
+                    Speed_base = 1000;
                 else
-                    pwm_base = 2000;
+                    Speed_base = 1000;
 
 				Steer_Ctrl_PPDD.Target = 0;
-				Steer_Ctrl_PPDD.Actual = g_track_result.steering_value * 20.0f;
+				Steer_Ctrl_PPDD.Actual = g_track_result.steering_value;
                 
                 Steer_Ctrl_PPDD.Gyro = (imu963ra_gyro_z + 7)/20*20;
                 STEER_CTRL_Update(&Steer_Ctrl_PPDD);
 
-                pwm_left  = pwm_base - (int16_t)Steer_Ctrl_PPDD.Out;
-                pwm_right = pwm_base + (int16_t)Steer_Ctrl_PPDD.Out;
+                Tar_Left  = Speed_base - (int16_t)Steer_Ctrl_PPDD.Out;
+                Tar_Right = Speed_base + (int16_t)Steer_Ctrl_PPDD.Out;
 
                 // Steer_PID.Target = 0;
                 // Steer_PID.Actual = g_track_result.steering_value * 10.0f;
@@ -146,15 +149,18 @@ int main_process(void)
                 // GZ_PID.Actual = imu963ra_gyro_transition((imu963ra_gyro_z + 7)/20*20);
                 // PID_POS_Update(&GZ_PID);
 
-                // pwm_left = pwm_base - (int16_t)GZ_PID.Out;
-                // pwm_right = pwm_base + (int16_t)GZ_PID.Out;
+                // Tar_Left = Speed_base - (int16_t)GZ_PID.Out;
+                // Tar_Right = Speed_base + (int16_t)GZ_PID.Out;
 
-                if (8000 <= pwm_left)  { pwm_left  =  8000; }
-                if (pwm_left <= -8000) { pwm_left  = -8000; }
-                if (8000 <= pwm_right) { pwm_right =  8000; }
-                if (pwm_right <= -8000){ pwm_right = -8000; }
-                Motor_Set(1, pwm_left);
-                Motor_Set(2, pwm_right);
+                // if (8000 <= Tar_Left)  { Tar_Left  =  8000; }
+                // if (Tar_Left <= -8000) { Tar_Left  = -8000; }
+                // if (8000 <= Tar_Right) { Tar_Right =  8000; }
+                // if (Tar_Right <= -8000){ Tar_Right = -8000; }
+                // Motor_Set(1, Tar_Left);
+                // Motor_Set(2, Tar_Right);
+
+                Motor_1_PID.Target = Tar_Left;
+                Motor_2_PID.Target = Tar_Right;
             }
         }
 
@@ -171,7 +177,7 @@ int main_process(void)
 
             // 调试：观察赛道偏差和基础速度
             ips200_show_float(0, 160, g_track_result.steering_value, 6, 2);
-            ips200_show_uint (120, 160, (uint16)pwm_base, 4);
+            ips200_show_uint (120, 160, (uint16)Speed_base, 4);
             // ips200_show_float(0, 176, Steer_Ctrl_PPDD.Out, 6, 2);
             ips200_show_float(0, 176, Steer_PID.Out, 6, 2);
             ips200_show_float(120, 176, GZ_PID.Out, 6, 2);

@@ -199,22 +199,22 @@ PID_POS_t GZ_PID = {
 
 // 电机1 PID参数
 PID_INC_t Motor_1_PID = {
-	.OutMax      =  8000,				// 输出限幅（上限）
-	.OutMin      = -8000,				// 输出限幅（下限）
-	.OutDeltaMax =  500,				// 单次增量变化上限
+	.OutMax      =  8500,				// 输出限幅（上限）
+	.OutMin      = -8500,				// 输出限幅（下限）
+	.OutDeltaMax =  700,				// 单次增量变化上限
 };
 
 // 电机2 PID参数
 PID_INC_t Motor_2_PID = {
-	.OutMax      =  8000,				// 输出限幅（上限）
-	.OutMin      = -8000,				// 输出限幅（下限）
-	.OutDeltaMax =  500,				// 单次增量变化上限
+	.OutMax      =  8500,				// 输出限幅（上限）
+	.OutMin      = -8500,				// 输出限幅（下限）
+	.OutDeltaMax =  700,				// 单次增量变化上限
 };
 
 // 转向控制
 STEER_CTRL_t Steer_Ctrl_PPDD = {
-    .OutMax =  8000,
-    .OutMin = -8000,
+    .OutMax =  1500,
+    .OutMin = -1500,
 };
 
 // 重置PID的所有中间量
@@ -244,11 +244,6 @@ void Speed_PID_Crtl (void)
 
 	PID_INC_Update(&Motor_1_PID);
 	PID_INC_Update(&Motor_2_PID);
-
-	if (Motor_1_PID.Out >  5000) Motor_1_PID.Out =  5000;
-	if (Motor_1_PID.Out < -5000) Motor_1_PID.Out = -5000;
-	if (Motor_2_PID.Out >  5000) Motor_2_PID.Out =  5000;
-	if (Motor_2_PID.Out < -5000) Motor_2_PID.Out = -5000;
 
 	Motor_Set(1, (int16_t)Motor_1_PID.Out);
 	Motor_Set(2, (int16_t)Motor_2_PID.Out);
