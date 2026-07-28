@@ -31,18 +31,18 @@ extern float param_cache[PARAM_COUNT];
 #define MOTOR2_KI_IDX               4
 #define MOTOR2_KD_IDX               5
 
-// Steer_Ctrl_PPDD 转向控制
+// Steer_Ctrl_PPDD 转向控制 
 #define STEER_PPDD_KP_IDX           6
 #define STEER_PPDD_KP2_IDX          7
 #define STEER_PPDD_KD_IDX           8
 #define STEER_PPDD_GKD_IDX          9
 
-// Steer_PID 偏移量环
+// Steer_PID 转角值环 (与"角速度环"串级,与"转向控制"互斥调用)
 #define STEER_PID_KP_IDX            10
 #define STEER_PID_KI_IDX            11
 #define STEER_PID_KD_IDX            12
 
-// GZ_PID 角速度环
+// GZ_PID 角速度环 (与"转角值环"串级,与"转向控制"互斥调用)
 #define GZ_PID_KP_IDX               13
 #define GZ_PID_KI_IDX               14
 #define GZ_PID_KD_IDX               15

@@ -135,8 +135,7 @@ extern uint16 Time_Count2;
 //===================================================用户自定义文件===================================================
 #include "Menu.h"
 #include "Debug.h"
-#include "drv8701_motor.h"
-#include "define.h"
+#include "Motor.h"
 #include "pid.h"
 #include "TrackRecognition.h"
 #include "common_menu.h"

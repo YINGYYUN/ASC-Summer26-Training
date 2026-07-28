@@ -430,21 +430,6 @@
               <FilePath>..\code\Debug.h</FilePath>
             </File>
             <File>
-              <FileName>drv8701_motor.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\code\drv8701_motor.c</FilePath>
-            </File>
-            <File>
-              <FileName>drv8701_motor.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\code\drv8701_motor.h</FilePath>
-            </File>
-            <File>
-              <FileName>define.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\code\define.h</FilePath>
-            </File>
-            <File>
               <FileName>pid.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\code\pid.c</FilePath>
@@ -513,6 +498,16 @@
               <FileName>Sim_IMU_Analysis.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\code\Sim_IMU_Analysis.h</FilePath>
+            </File>
+            <File>
+              <FileName>Motor.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\code\Motor.c</FilePath>
+            </File>
+            <File>
+              <FileName>Motor.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\code\Motor.h</FilePath>
             </File>
           </Files>
         </Group>

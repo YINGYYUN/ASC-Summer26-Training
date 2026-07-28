@@ -52,10 +52,10 @@ void Debug_Motor_UI(void)
     ips200_show_string(10 ,48 , "PWM 1:");
 	ips200_show_string(10 ,64 , "PWM 2:");
 	// 空行
-	ips200_show_string(0  ,96 , "ENC 1:");
-	ips200_show_string(0  ,112, "ENC 2:");
-    ips200_show_string(0  ,128, "SUM 1:");
-	ips200_show_string(0  ,144, "SUM 2:");
+	ips200_show_string(0  ,96 , "ENC 1: NAN");
+	ips200_show_string(0  ,112, "ENC 2: NAN");
+    ips200_show_string(0  ,128, "SUM 1: NAN");
+	ips200_show_string(0  ,144, "SUM 2: NAN");
 }
 
 // [三级界面]Motor_PID调试界面   
@@ -386,11 +386,7 @@ int Debug_Motor (void)
     int16_t pwm[3] = {0};
     Motor_ALL_Zero();
 
-    // 编码器相关,为方便调用元素数量为3
-    int32_t enc_cur[3] = {0};
-    int32_t enc_sum[3] = {0};
-    ENC1_CLEAR();
-    ENC2_CLEAR();
+    Speed_PID_Crtl_Enable = 0;
 
     // 参考计时值重置
     Time_Count1 = 0;
@@ -477,41 +473,29 @@ int Debug_Motor (void)
                     break;  // 退出修改模式
                 }
                 
-                /* 电机编码器读取 */
-                if (Time_Count2 >= 2)// 10ms * 2 周期
+                /* 显示更新 */
+                if (Time_Count2 >= 10)// 10ms * 10 周期
                 {
                     Time_Count2 = 0;
                     
-                    enc_cur[1] = ENC1_GET();
-                    enc_cur[2] = ENC2_GET();
-                    ENC1_CLEAR();
-                    ENC2_CLEAR();
-                    enc_sum[1] += enc_cur[1];
-                    enc_sum[2] += enc_cur[2];
-                    ips200_printf(58 ,96 , "%d  ", enc_cur[1]);
-                    ips200_printf(58 ,112, "%d  ", enc_cur[2]);
-                    ips200_printf(58 ,128, "%d  ", enc_sum[1]);
-                    ips200_printf(58 ,144, "%d  ", enc_sum[2]);
+                    ips200_printf(56 ,96 , "%d  ", ENC_left_CNT);
+                    ips200_printf(56 ,112, "%d  ", ENC_right_CNT);
+                    // ips200_printf(56 ,128, "%d  ", 0);
+                    // ips200_printf(56 ,144, "%d  ", 0);
                 }
             }
         }
             
             
-        /* 电机编码器读取 */
-        if (Time_Count2 >= 2)// 10ms * 2 周期
+        /* 显示更新 */
+        if (Time_Count2 >= 10)// 10ms * 10n周期
         {
             Time_Count2 = 0;
             
-            enc_cur[1] = ENC1_GET();
-            enc_cur[2] = ENC2_GET();
-            ENC1_CLEAR();
-            ENC2_CLEAR();
-            enc_sum[1] += enc_cur[1];
-            enc_sum[2] += enc_cur[2];
-            ips200_printf(58 ,96 , "%d  ", enc_cur[1]);
-            ips200_printf(58 ,112, "%d  ", enc_cur[2]);
-            ips200_printf(58 ,128, "%d  ", enc_sum[1]);
-            ips200_printf(58 ,144, "%d  ", enc_sum[2]);
+            ips200_printf(56 ,96 , "%d  ", ENC_left_CNT);
+            ips200_printf(56 ,112, "%d  ", ENC_right_CNT);
+            // ips200_printf(56 ,128, "%d  ", 0);
+            // ips200_printf(56 ,144, "%d  ", 0);
         }
             
             
@@ -544,14 +528,11 @@ int Debug_Motor_PID (void)
     // 电机速度重置
     Motor_ALL_Zero();
 
-    // 编码器相关,为方便调用元素数量为3
-    int16_t enc_cur[3] = {0};
-    ENC1_CLEAR();
-    ENC2_CLEAR();
-
     // 参考计时值重置
     Time_Count1 = 0;
     Time_Count2 = 0;
+
+    Speed_PID_Crtl_Enable = 1;
 
 	Debug_Motor_PID_UI();
 	ips200_show_string(0 ,48 , ">");
@@ -593,6 +574,7 @@ int Debug_Motor_PID (void)
         {
             key_clear_state(KEY_BACK);
 
+            Speed_PID_Crtl_Enable = 0;
             // 重置PID中间量
             PID_ALL_Init();
             // 电机速度重置
@@ -614,15 +596,19 @@ int Debug_Motor_PID (void)
                 if (KEY_SHORT_PRESS == key_get_state(KEY_UP))
                 {
                     key_clear_state(KEY_UP);
-                    enc_tar[Debug_M_P_f] += 50;
-                    if (enc_tar[Debug_M_P_f] > 1000)enc_tar[Debug_M_P_f] = 1000;
+                    enc_tar[Debug_M_P_f] += 10;
+                    if (enc_tar[Debug_M_P_f] > 200)enc_tar[Debug_M_P_f] = 200;
+                    Motor_1_PID.Target = enc_tar[1];
+                    Motor_2_PID.Target = enc_tar[2];
                     ips200_printf(58 ,32 + 16*Debug_M_P_f, "%d  ", enc_tar[Debug_M_P_f]);
                 }
                 else if (KEY_SHORT_PRESS == key_get_state(KEY_DOWN))
                 {
                     key_clear_state(KEY_DOWN);
-                    enc_tar[Debug_M_P_f] -= 50;
-                    if (enc_tar[Debug_M_P_f] < -1000)enc_tar[Debug_M_P_f] = -1000;
+                    enc_tar[Debug_M_P_f] -= 10;
+                    if (enc_tar[Debug_M_P_f] < -200)enc_tar[Debug_M_P_f] = -200;
+                    Motor_1_PID.Target = enc_tar[1];
+                    Motor_2_PID.Target = enc_tar[2];
                     ips200_printf(58 ,32 + 16*Debug_M_P_f, "%d  ", enc_tar[Debug_M_P_f]);
                 }
                 else if (KEY_SHORT_PRESS == key_get_state(KEY_CONFIRM) || 
@@ -635,77 +621,31 @@ int Debug_Motor_PID (void)
                     break;  // 退出修改模式
                 }
 
-                
-                /* 电机编码器读取 */
-                if (Time_Count1 >= 2)// 10ms * 2 周期
-                {
-                    Time_Count1 = 0;
-                    
-                    enc_cur[1] = ENC1_GET();
-                    enc_cur[2] = ENC2_GET();
-                    ENC1_CLEAR();
-                    ENC2_CLEAR();
-
-                    // PID计算
-                    Motor_1_PID.Actual = enc_cur[1];
-                    Motor_1_PID.Target = enc_tar[1];
-                    PID_INC_Update(&Motor_1_PID);
-                    Motor_Set(1, (int16_t)Motor_1_PID.Out);
-                    
-                    Motor_2_PID.Actual = enc_cur[2];
-                    Motor_2_PID.Target = enc_tar[2];
-                    PID_INC_Update(&Motor_2_PID);
-                    Motor_Set(2, (int16_t)Motor_2_PID.Out);
-                }
-
 
                 /* 数据显示 */
                 if (Time_Count2 >= 10)// 10ms * 10 周期
                 {
                     Time_Count2 = 0;
 
-                    ips200_printf(58 ,96 , "%d  ", enc_cur[1]);
-                    ips200_printf(58 ,112, "%d  ", enc_cur[2]);
-                    ips200_printf(58 ,128, "%d  ", (int16_t)Motor_1_PID.Out);
-                    ips200_printf(58 ,144, "%d  ", (int16_t)Motor_2_PID.Out);
+                    ips200_printf(56 ,96 , "%d  ", ENC_left_CNT);
+                    ips200_printf(56 ,112, "%d  ", ENC_right_CNT);
+                    ips200_printf(56 ,128, "%d  ", (int16_t)Motor_1_PID.Out);
+                    ips200_printf(56 ,144, "%d  ", (int16_t)Motor_2_PID.Out);
 					printf("%.1f,%.0f,%.0f\n", Motor_1_PID.Actual, Motor_1_PID.Target, Motor_1_PID.Out);
                 }
             }
         }
         
-        
-        /* 电机编码器读取 */
-        if (Time_Count1 >= 2)// 10ms * 2 = 20ms 周期
-        {
-            Time_Count1 = 0;
-            
-            enc_cur[1] = ENC1_GET();
-            enc_cur[2] = ENC2_GET();
-            ENC1_CLEAR();
-            ENC2_CLEAR();
-
-            // PID计算
-            Motor_1_PID.Actual = enc_cur[1];
-            Motor_1_PID.Target = enc_tar[1];
-            PID_INC_Update(&Motor_1_PID);
-            Motor_Set(1, (int16_t)Motor_1_PID.Out);
-            
-            Motor_2_PID.Actual = enc_cur[2];
-            Motor_2_PID.Target = enc_tar[2];
-            PID_INC_Update(&Motor_2_PID);
-            Motor_Set(2, (int16_t)Motor_2_PID.Out);
-        }
-
 
         /* 数据显示 */
         if (Time_Count2 >= 10)// 10 * 10 ms周期
         {
             Time_Count2 = 0;
 
-            ips200_printf(58 ,96 , "%d  ", enc_cur[1]);
-            ips200_printf(58 ,112, "%d  ", enc_cur[2]);
-            ips200_printf(58 ,128, "%d  ", (int16_t)Motor_1_PID.Out);
-            ips200_printf(58 ,144, "%d  ", (int16_t)Motor_2_PID.Out);
+            ips200_printf(56 ,96 , "%d  ", ENC_left_CNT);
+            ips200_printf(56 ,112, "%d  ", ENC_right_CNT);
+            ips200_printf(56 ,128, "%d  ", (int16_t)Motor_1_PID.Out);
+            ips200_printf(56 ,144, "%d  ", (int16_t)Motor_2_PID.Out);
 			printf("%.1f,%.0f,%.0f\n", Motor_1_PID.Actual, Motor_1_PID.Target, Motor_1_PID.Out);
         }
         
@@ -844,7 +784,7 @@ int Debug_MT9_Track     (void)
         }
 
 
-        if (Time_Count2 >= 20)// 10ms * 20 显示周期
+        if (Time_Count2 >= 25)// 10ms * 25 显示周期
         {
             Time_Count2 = 0;
 

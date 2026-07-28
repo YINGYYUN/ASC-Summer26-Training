@@ -9,16 +9,16 @@
 extern PID_INC_t Motor_1_PID;           // 电机1 PID (左轮)
 extern PID_INC_t Motor_2_PID;           // 电机2 PID (右轮)
 extern STEER_CTRL_t Steer_Ctrl_PPDD;    // 转向控制 PPDD  (和下面两个pid使用互斥)
-extern PID_POS_t Steer_PID;		        // 偏移量环 PID
-extern PID_POS_t GZ_PID;		        // 角速度环 PID
+extern PID_POS_t Steer_PID;		        // 转角值环 PID (与"角速度环"串级,与"转向控制"互斥调用)
+extern PID_POS_t GZ_PID;		        // 角速度环 PID (与"转角值环"串级,与"转向控制"互斥调用)
 
 
 // 默认参数值(首次使用或恢复出厂设置时使用)
 static const float DEFAULT_PARAMS[PARAM_COUNT] = {
     // Motor_1_PID
-    25.0f, 0.0f, 0.0f,       // KP, KI, KD
+    0.01f, 0.0f, 0.0f,       // KP, KI, KD
     // Motor_2_PID
-    25.0f, 0.0f, 0.0f,       // KP, KI, KD
+    0.01f, 0.0f, 0.0f,       // KP, KI, KD
     // Steer_Ctrl_PPDD
     24.0f, 0.0f, 0.0f, 3.0f,  // KP, KP2, KD, GKD
     // Steer_PID

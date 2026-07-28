@@ -83,17 +83,17 @@ typedef struct {
 
 
 // 位置式PID重置中间量
-void	 PID_POS_Init		(PID_POS_t *p);
+void	PID_POS_Init		(PID_POS_t *p);
 // 位置式PID计算
 void 	PID_POS_Update		(PID_POS_t *p);
 // 增量式PID重置中间量
-void	 PID_INC_Init		(PID_INC_t *p);
+void	PID_INC_Init		(PID_INC_t *p);
 // 增量式PID计算
 void 	PID_INC_Update		(PID_INC_t *p);
 // 转向控制重置中间量
-void	 STEER_CTRL_Init	(STEER_CTRL_t *p);
+void 	STEER_CTRL_Init		(STEER_CTRL_t *p);
 // 转向控制计算
-void	 STEER_CTRL_Update	(STEER_CTRL_t *p);
+void 	STEER_CTRL_Update	(STEER_CTRL_t *p);
 
 /**********************************************************/
 /*----------------------------------------[E] 基础函数 [E]*/
@@ -101,12 +101,12 @@ void	 STEER_CTRL_Update	(STEER_CTRL_t *p);
 
 
 /**********************************************************/
-/*[S] PID实例 [S]----------------------------------------*/
+/*[S] PID实例 [S]-----------------------------------------*/
 /**********************************************************/
 
 // 位置式PID
-extern PID_POS_t Steer_PID;		// 偏移量环
-extern PID_POS_t GZ_PID;		// 角速度环 
+extern PID_POS_t Steer_PID;		// 转角值环 (与"角速度环"串级,与"转向控制"互斥调用)
+extern PID_POS_t GZ_PID;		// 角速度环 (与"转角值环"串级,与"转向控制"互斥调用)
 // 增量式PID
 extern PID_INC_t Motor_1_PID;	// 电机1 
 extern PID_INC_t Motor_2_PID;	// 电机2 
@@ -117,7 +117,19 @@ extern STEER_CTRL_t Steer_Ctrl_PPDD;
 void PID_ALL_Init(void);
 
 /**********************************************************/
-/*----------------------------------------[E] PID实例 [E]*/
+/*-----------------------------------------[E] PID实例 [E]*/
+/**********************************************************/
+
+
+/**********************************************************/
+/*[S] 速度环包装 [S]--------------------------------------*/
+/**********************************************************/
+// 电机速度环 PID 使能
+extern uint8_t Speed_PID_Crtl_Enable;
+// 电机速度环 PID
+void Speed_PID_Crtl (void);
+/**********************************************************/
+/*--------------------------------------[E] 速度环包装 [E]*/
 /**********************************************************/
 
 

@@ -1,5 +1,6 @@
 /*******************************************************************************
-可更改参数菜单
+参数更改菜单
+参数不在本文件定义，而在对应的模块文件中
 参数缓存区(param_cache) → Flash 持久化, 通过 Param_Storage 宏访问
 *******************************************************************************/
 
@@ -13,7 +14,7 @@ static void param_page_init(void)
 {
     menu_reset();       // 清空旧菜单
 	
-	// ---------- 转向控制 PPDD ---------- 
+	// 转向控制 PPDD
     Menu_Item *folder_m5 = DynamicCreate_Menu_Folder(&head, "STEER_PPDD");
     DynamicCreate_Menu_LimitNumber(folder_m5, "KP" , &STEER_PPDD_KP , float_Box, 0, 60);
     DynamicCreate_Menu_LimitNumber(folder_m5, "KP2", &STEER_PPDD_KP2, float_Box, 0, 20);
@@ -21,29 +22,29 @@ static void param_page_init(void)
     DynamicCreate_Menu_LimitNumber(folder_m5, "GKD", &STEER_PPDD_GKD, float_Box, 0, 20);
 
 
-    // // ---------- 偏移量环 PID ----------
+    // // 转角值环 PID (与"角速度环"串级,与"转向控制"互斥调用)
     // Menu_Item *folder_m1 = DynamicCreate_Menu_Folder(&head, "STEER_PID");
     // DynamicCreate_Menu_LimitNumber(folder_m1, "KP", &STEER_PID_KP, float_Box, 0, 60);
     // DynamicCreate_Menu_LimitNumber(folder_m1, "KI", &STEER_PID_KI, float_Box, 0, 5);
     // DynamicCreate_Menu_LimitNumber(folder_m1, "KD", &STEER_PID_KD, float_Box, 0, 20);
 
-    // // ---------- 角速度环 PID ----------
+    // // 角速度环 PID (与"转角值环"串级,与"转向控制"互斥调用)
     // Menu_Item *folder_m2 = DynamicCreate_Menu_Folder(&head, "GZ_PID");
     // DynamicCreate_Menu_LimitNumber(folder_m2, "KP", &GZ_PID_KP, float_Box, 0, 60);
     // DynamicCreate_Menu_LimitNumber(folder_m2, "KI", &GZ_PID_KI, float_Box, 0, 5);
     // DynamicCreate_Menu_LimitNumber(folder_m2, "KD", &GZ_PID_KD, float_Box, 0, 20);
     
-    // // ---------- 电机1 PID ----------
-    // Menu_Item *folder_m3 = DynamicCreate_Menu_Folder(&head, "Motor1_PID");
-    // DynamicCreate_Menu_LimitNumber(folder_m3, "KP", &MOTOR1_KP, float_Box, 0, 60);
-    // DynamicCreate_Menu_LimitNumber(folder_m3, "KI", &MOTOR1_KI, float_Box, 0, 10);
-    // DynamicCreate_Menu_LimitNumber(folder_m3, "KD", &MOTOR1_KD, float_Box, 0, 20);
+    // 电机1 PID
+    Menu_Item *folder_m3 = DynamicCreate_Menu_Folder(&head, "Motor1_PID");
+    DynamicCreate_Menu_LimitNumber(folder_m3, "KP", &MOTOR1_KP, float_Box, 0, 10);
+    DynamicCreate_Menu_LimitNumber(folder_m3, "KI", &MOTOR1_KI, float_Box, 0, 10);
+    DynamicCreate_Menu_LimitNumber(folder_m3, "KD", &MOTOR1_KD, float_Box, 0, 10);
 
-    // // ---------- 电机2 PID ----------
-    // Menu_Item *folder_m4 = DynamicCreate_Menu_Folder(&head, "Motor2_PID");
-    // DynamicCreate_Menu_LimitNumber(folder_m4, "KP", &MOTOR2_KP, float_Box, 0, 60);
-    // DynamicCreate_Menu_LimitNumber(folder_m4, "KI", &MOTOR2_KI, float_Box, 0, 10);
-    // DynamicCreate_Menu_LimitNumber(folder_m4, "KD", &MOTOR2_KD, float_Box, 0, 20);
+    // 电机2 PID
+    Menu_Item *folder_m4 = DynamicCreate_Menu_Folder(&head, "Motor2_PID");
+    DynamicCreate_Menu_LimitNumber(folder_m4, "KP", &MOTOR2_KP, float_Box, 0, 10);
+    DynamicCreate_Menu_LimitNumber(folder_m4, "KI", &MOTOR2_KI, float_Box, 0, 10);
+    DynamicCreate_Menu_LimitNumber(folder_m4, "KD", &MOTOR2_KD, float_Box, 0, 10);
 
     key = head.first_son;   // 光标移到第一项
 }

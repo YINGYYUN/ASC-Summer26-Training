@@ -77,6 +77,7 @@ int main_process(void)
 
         if (car_state == Car_Stop)
         {
+            Speed_PID_Crtl_Enable = 0;
             // 电机速度重置
             Motor_ALL_Zero();
             // 重置PID中间量
