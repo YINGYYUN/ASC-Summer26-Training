@@ -206,19 +206,19 @@ void IMU_Gyro_Apply(Gyro_Calib_StructDef *cal, float *gx, float *gy, float *gz)
 //-------------------------------------------------------------------------------------------------------------------
 void IMU_Update_Analysis(void)
 {
-    int16_t gy_raw;          // 陀螺仪 Y 轴原始值（校准+死区后）
+    int16_t gy_raw;          // 陀螺仪 X 轴原始值（校准+死区后）
     float pitch_acc;         // 加速度计计算的俯仰角
     float pitch_gyro;        // 陀螺仪积分的俯仰角
 
-    // 加速度计俯仰角 (°) — 直接使用库转换宏
-    pitch_acc = -atan2f(imu963ra_acc_transition(imu963ra_acc_x),
+    // 加速度计俯仰角 (°) — Y/Z 轴（车前进方向/垂直）
+    pitch_acc = -atan2f(imu963ra_acc_transition(imu963ra_acc_y),
                         imu963ra_acc_transition(imu963ra_acc_z)) * 57.29578f;
 
-    // 陀螺仪 Y 轴：校准 + 死区 + 转 °/s
-    gy_raw = imu963ra_gyro_y;
+    // 陀螺仪 X 轴：校准 + 死区 + 转 °/s
+    gy_raw = imu963ra_gyro_x;
     if (gyro_cal.calib_state == GYRO_CALIB_STATE_DONE)
     {
-        gy_raw -= gyro_cal.offset_y;
+        gy_raw -= gyro_cal.offset_x;
     }
     if (-7 < gy_raw && gy_raw < 7)
     {
@@ -226,10 +226,10 @@ void IMU_Update_Analysis(void)
     }
 
     // 陀螺仪积分俯仰角 (°)
-    pitch_gyro = Pitch_Result + (float)gy_raw / imu963ra_transition_factor[1] * IMU_DT;
+    pitch_gyro = Pitch_Result + (float)gy_raw / imu963ra_transition_factor[0] * IMU_DT;
 
-    // 互补滤波：alpha = 0.02，时间常数约 0.5s @100Hz
-    Pitch_Result = 0.02f * pitch_acc + 0.98f * pitch_gyro;
+    // 互补滤波：alpha = 0.08，时间常数约 0.12s @100Hz（快速上坡检测）
+    Pitch_Result = 0.08f * pitch_acc + 0.92f * pitch_gyro;
 }
 
 /*======================================================*/

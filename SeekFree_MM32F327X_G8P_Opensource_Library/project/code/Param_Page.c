@@ -36,15 +36,15 @@ static void param_page_init(void)
     
     // 电机1 PID
     Menu_Item *folder_m3 = DynamicCreate_Menu_Folder(&head, "Motor1_PID");
-    DynamicCreate_Menu_LimitNumber(folder_m3, "KP", &MOTOR1_KP, float_Box, 0, 10);
-    DynamicCreate_Menu_LimitNumber(folder_m3, "KI", &MOTOR1_KI, float_Box, 0, 10);
-    DynamicCreate_Menu_LimitNumber(folder_m3, "KD", &MOTOR1_KD, float_Box, 0, 10);
+    DynamicCreate_Menu_LimitNumber(folder_m3, "KP", &MOTOR1_KP, float_Box, 0, 70);
+    DynamicCreate_Menu_LimitNumber(folder_m3, "KI", &MOTOR1_KI, float_Box, 0, 70);
+    DynamicCreate_Menu_LimitNumber(folder_m3, "KD", &MOTOR1_KD, float_Box, 0, 70);
 
     // 电机2 PID
     Menu_Item *folder_m4 = DynamicCreate_Menu_Folder(&head, "Motor2_PID");
-    DynamicCreate_Menu_LimitNumber(folder_m4, "KP", &MOTOR2_KP, float_Box, 0, 10);
-    DynamicCreate_Menu_LimitNumber(folder_m4, "KI", &MOTOR2_KI, float_Box, 0, 10);
-    DynamicCreate_Menu_LimitNumber(folder_m4, "KD", &MOTOR2_KD, float_Box, 0, 10);
+    DynamicCreate_Menu_LimitNumber(folder_m4, "KP", &MOTOR2_KP, float_Box, 0, 70);
+    DynamicCreate_Menu_LimitNumber(folder_m4, "KI", &MOTOR2_KI, float_Box, 0, 70);
+    DynamicCreate_Menu_LimitNumber(folder_m4, "KD", &MOTOR2_KD, float_Box, 0, 70);
 
     key = head.first_son;   // 光标移到第一项
 }

@@ -478,8 +478,8 @@ int Debug_Motor (void)
                 {
                     Time_Count2 = 0;
                     
-                    ips200_printf(56 ,96 , "%d  ", ENC_left_CNT);
-                    ips200_printf(56 ,112, "%d  ", ENC_right_CNT);
+                    ips200_printf(56 ,96 , "%d  ", ENC_left_CNT * 10);
+                    ips200_printf(56 ,112, "%d  ", ENC_right_CNT * 10);
                     // ips200_printf(56 ,128, "%d  ", 0);
                     // ips200_printf(56 ,144, "%d  ", 0);
                 }
@@ -492,8 +492,8 @@ int Debug_Motor (void)
         {
             Time_Count2 = 0;
             
-            ips200_printf(56 ,96 , "%d  ", ENC_left_CNT);
-            ips200_printf(56 ,112, "%d  ", ENC_right_CNT);
+            ips200_printf(56 ,96 , "%d  ", ENC_left_CNT * 10);
+            ips200_printf(56 ,112, "%d  ", ENC_right_CNT * 10);
             // ips200_printf(56 ,128, "%d  ", 0);
             // ips200_printf(56 ,144, "%d  ", 0);
         }
@@ -545,6 +545,7 @@ int Debug_Motor_PID (void)
 
     while(1)
     {
+
         // 存储确认键被按下时Debug_M_f的值的临时变量，默认为无效值0
         uint8_t Debug_M_P_f_temp = 0;
         // 上/下按键是否被按下过
@@ -596,8 +597,8 @@ int Debug_Motor_PID (void)
                 if (KEY_SHORT_PRESS == key_get_state(KEY_UP))
                 {
                     key_clear_state(KEY_UP);
-                    enc_tar[Debug_M_P_f] += 10;
-                    if (enc_tar[Debug_M_P_f] > 200)enc_tar[Debug_M_P_f] = 200;
+                    enc_tar[Debug_M_P_f] += 15;
+                    if (enc_tar[Debug_M_P_f] > 500)enc_tar[Debug_M_P_f] = 500;
                     Motor_1_PID.Target = enc_tar[1];
                     Motor_2_PID.Target = enc_tar[2];
                     ips200_printf(58 ,32 + 16*Debug_M_P_f, "%d  ", enc_tar[Debug_M_P_f]);
@@ -605,8 +606,8 @@ int Debug_Motor_PID (void)
                 else if (KEY_SHORT_PRESS == key_get_state(KEY_DOWN))
                 {
                     key_clear_state(KEY_DOWN);
-                    enc_tar[Debug_M_P_f] -= 10;
-                    if (enc_tar[Debug_M_P_f] < -200)enc_tar[Debug_M_P_f] = -200;
+                    enc_tar[Debug_M_P_f] -= 15;
+                    if (enc_tar[Debug_M_P_f] < -500)enc_tar[Debug_M_P_f] = -500;
                     Motor_1_PID.Target = enc_tar[1];
                     Motor_2_PID.Target = enc_tar[2];
                     ips200_printf(58 ,32 + 16*Debug_M_P_f, "%d  ", enc_tar[Debug_M_P_f]);
@@ -623,30 +624,30 @@ int Debug_Motor_PID (void)
 
 
                 /* 数据显示 */
-                if (Time_Count2 >= 10)// 10ms * 10 周期
+                if (Time_Count2 >= 2)// 10ms * 2 周期
                 {
                     Time_Count2 = 0;
 
-                    ips200_printf(56 ,96 , "%d  ", ENC_left_CNT);
-                    ips200_printf(56 ,112, "%d  ", ENC_right_CNT);
+                    ips200_printf(56 ,96 , "%d  ", (int16_t)Motor_1_PID.Actual);
+                    ips200_printf(56 ,112, "%d  ", (int16_t)Motor_2_PID.Actual);
                     ips200_printf(56 ,128, "%d  ", (int16_t)Motor_1_PID.Out);
                     ips200_printf(56 ,144, "%d  ", (int16_t)Motor_2_PID.Out);
-					printf("%.1f,%.0f,%.0f\n", Motor_1_PID.Actual, Motor_1_PID.Target, Motor_1_PID.Out);
+					printf("%d,%d,%d\n", (int16_t)Motor_1_PID.Actual, (int16_t)Motor_1_PID.Target, (int16_t)Motor_1_PID.Out);
                 }
             }
         }
         
 
         /* 数据显示 */
-        if (Time_Count2 >= 10)// 10 * 10 ms周期
+        if (Time_Count2 >= 2)// 10 * 2 ms周期
         {
             Time_Count2 = 0;
 
-            ips200_printf(56 ,96 , "%d  ", ENC_left_CNT);
-            ips200_printf(56 ,112, "%d  ", ENC_right_CNT);
+            ips200_printf(56 ,96 , "%d  ", (int16_t)Motor_1_PID.Actual);
+            ips200_printf(56 ,112, "%d  ", (int16_t)Motor_2_PID.Actual);
             ips200_printf(56 ,128, "%d  ", (int16_t)Motor_1_PID.Out);
             ips200_printf(56 ,144, "%d  ", (int16_t)Motor_2_PID.Out);
-			printf("%.1f,%.0f,%.0f\n", Motor_1_PID.Actual, Motor_1_PID.Target, Motor_1_PID.Out);
+			printf("%d,%d,%d\n", (int16_t)Motor_1_PID.Actual, (int16_t)Motor_1_PID.Target, (int16_t)Motor_1_PID.Out);
         }
         
         

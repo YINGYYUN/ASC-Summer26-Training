@@ -16,9 +16,9 @@ extern PID_POS_t GZ_PID;		        // 角速度环 PID (与"转角值环"串级,�
 // 默认参数值(首次使用或恢复出厂设置时使用)
 static const float DEFAULT_PARAMS[PARAM_COUNT] = {
     // Motor_1_PID
-    0.01f, 0.0f, 0.0f,       // KP, KI, KD
+    7.0f, 0.9f, 0.0f,       // KP, KI, KD
     // Motor_2_PID
-    0.01f, 0.0f, 0.0f,       // KP, KI, KD
+    7.0f, 0.9f, 0.0f,       // KP, KI, KD
     // Steer_Ctrl_PPDD
     24.0f, 0.0f, 0.0f, 3.0f,  // KP, KP2, KD, GKD
     // Steer_PID

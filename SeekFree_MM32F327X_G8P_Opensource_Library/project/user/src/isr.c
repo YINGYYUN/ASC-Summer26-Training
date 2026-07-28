@@ -129,8 +129,8 @@ void TIM7_IRQHandler (void)
     ENC_right_CNT = ENC2_GET();
     ENC2_CLEAR();
 
-    Motor_1_PID.Actual = ENC_left_CNT * 20;
-    Motor_2_PID.Actual = ENC_right_CNT * 20;
+    Motor_1_PID.Actual = ENC_left_CNT * 10;
+    Motor_2_PID.Actual = ENC_right_CNT * 10;
     Speed_PID_Crtl();
     // 此处编写用户代码
     TIM7->SR &= ~TIM7->SR;                                                      // 清空中断状态

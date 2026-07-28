@@ -244,6 +244,12 @@ void Speed_PID_Crtl (void)
 
 	PID_INC_Update(&Motor_1_PID);
 	PID_INC_Update(&Motor_2_PID);
+
+	if (Motor_1_PID.Out >  5000) Motor_1_PID.Out =  5000;
+	if (Motor_1_PID.Out < -5000) Motor_1_PID.Out = -5000;
+	if (Motor_2_PID.Out >  5000) Motor_2_PID.Out =  5000;
+	if (Motor_2_PID.Out < -5000) Motor_2_PID.Out = -5000;
+
 	Motor_Set(1, (int16_t)Motor_1_PID.Out);
 	Motor_Set(2, (int16_t)Motor_2_PID.Out);
 }
