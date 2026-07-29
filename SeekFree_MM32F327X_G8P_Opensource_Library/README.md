@@ -2,15 +2,14 @@
 
 ---
 
-## 代码目录 (更新与2026.7)
+## 代码目录 (更新于2026.7)
 
 ```
 project/
 ├── code/                   # 用户核心代码
-│   ├── define.h            # 全局宏定义（引脚、参数等）
+│   ├── Motor.c/h            # 电机驱动 & 编码器定义
 │   ├── process.c/h         # 主流程控制
 │   ├── pid.c/h             # PID 控制器
-│   ├── drv8701_motor.c/h   # DRV8701 电机驱动
 │   ├── Track_sweep.c       # 图像扫描
 │   ├── TrackRecognition.h  # 赛道识别
 │   ├── Debug.c/h           # 调试功能
@@ -29,7 +28,7 @@ project/
 └── mdk/                    # Keil MDK 工程文件
 ```
 
-## 引脚分配 (更新与2026.7)
+## 引脚分配 (更新于2026.7)
 
 > **注意：** 以下引用逐飞推荐引脚分配，需要在头文件中二次确认，尤其是电机驱动引脚。
 
@@ -44,7 +43,7 @@ project/
 
 ### 电机 (DRV8701 驱动) — TIM5
 
-> 见 `drv8701_motor.h`
+> 见 `Motor.h`
 
 - `MOTOR_1_DIR`: A0  (IO)
 - `MOTOR_1_PWM`: A1  (TIM5_CH2)
@@ -53,7 +52,7 @@ project/
 
 ### AB相正交编码器 — TIM3/4 （编码器芯片侧引脚名）
 
-> 见 `define.h`
+> 见 `Motor.h`
 
 - `编码器1 A相`: B4  (TIM3_ENC1)
 - `编码器1 B相`: B5  (TIM3_ENC2)
@@ -94,5 +93,6 @@ project/
 - `TIM4`: 正交编码器
 - `TIM5`: 电机驱动PWM
 - `TIM6`: 按键轮询调用,计时参考变量(如Time_Count1)累加
+- `TIM7`: 左右电机速度环(5ms)更新
 
 ---
