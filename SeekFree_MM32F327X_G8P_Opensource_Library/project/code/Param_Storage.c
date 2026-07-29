@@ -20,7 +20,7 @@ static const float DEFAULT_PARAMS[PARAM_COUNT] = {
     // Motor_2_PID
     7.0f, 0.9f, 0.0f,       // KP, KI, KD
     // Steer_Ctrl_PPDD
-    24.0f, 0.0f, 0.0f, 3.0f,  // KP, KP2, KD, GKD
+    40.0f, 0.0f, 0.0f, 0.4f,  // KP, KP2, KD, GKD
     // Steer_PID
     7.0f, 0.0f, 0.0f,
     // GZ_PID

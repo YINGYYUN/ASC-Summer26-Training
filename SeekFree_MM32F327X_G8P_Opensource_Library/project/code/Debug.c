@@ -968,7 +968,8 @@ int Debug_IMU (void)
 
 int Debug_Remote_Crtl   (void)
 {
-    #define REMOTE_BASE_SPEED 800                                              // 蓝牙遥控最大速度(编码器脉冲/10ms)
+    #define REMOTE_BASE_SPEED  800          // 直行灵敏度(速度环读取实际值为编码器脉冲*10/5ms)
+    #define REMOTE_STEER_SPEED 300          // 转向灵敏度(速度环读取实际值为编码器脉冲*10/5ms)
 
     Debug_Remote_Crtl_UI();
 
@@ -977,6 +978,10 @@ int Debug_Remote_Crtl   (void)
 
     Motor_ALL_Zero();
     Speed_PID_Crtl_Enable = 1;
+
+    // 参考计时值重置
+    Time_Count1 = 0;
+    Time_Count2 = 0;
 
     while(1)
     {
@@ -1009,8 +1014,8 @@ int Debug_Remote_Crtl   (void)
                     RV = (int8_t)atoi(strtok(NULL, ","));
 
                     // 差速映射：LV=油门(前后) RH=转向(左右)
-                    tar_left  = (int16_t)(LV * REMOTE_BASE_SPEED / 100 + RH * REMOTE_BASE_SPEED / 100);
-                    tar_right = (int16_t)(LV * REMOTE_BASE_SPEED / 100 - RH * REMOTE_BASE_SPEED / 100);
+                    tar_left  = (int16_t)(LV * REMOTE_BASE_SPEED  / 100 + RH * REMOTE_STEER_SPEED / 100);
+                    tar_right = (int16_t)(LV * REMOTE_BASE_SPEED  / 100 - RH * REMOTE_STEER_SPEED / 100);
 
                     // 限幅
                     if(tar_left  >  REMOTE_BASE_SPEED) tar_left  =  REMOTE_BASE_SPEED;
@@ -1020,8 +1025,20 @@ int Debug_Remote_Crtl   (void)
 
                     Motor_1_PID.Target = tar_left;
                     Motor_2_PID.Target = tar_right;
+
+                    Time_Count1 = 0;                                            // 收到有效帧，重置断连计时
                 }
             }
+        }
+
+        /* 断连保护：0.5s 无有效帧则停车 */
+        if (Time_Count1 >= 50)                                                  // 10ms * 50 = 500ms
+        {
+            Time_Count1 = 50;                                                   // 上限保持，避免溢出回绕
+            tar_left  = 0;
+            tar_right = 0;
+            Motor_1_PID.Target = 0;
+            Motor_2_PID.Target = 0;
         }
 
         /* 显示更新 */
@@ -1037,6 +1054,11 @@ int Debug_Remote_Crtl   (void)
             ips200_printf(120,80 , "%-5d ", tar_right);
             ips200_printf(48 ,96 , "%-5d ", (int16_t)Motor_1_PID.Actual);
             ips200_printf(120,96 , "%-5d ", (int16_t)Motor_2_PID.Actual);
+
+            if(Time_Count1 >= 50)
+                ips200_show_string(0 ,112, "TIMEOUT - NO SIGNAL");
+            else
+                ips200_show_string(0 ,112, "                   ");
         }
     }
 }
