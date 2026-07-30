@@ -129,9 +129,9 @@ int main_process(void)
 
                 // 速度分级：赛道偏差小 → 高速，偏差大 → 低速
                 if (fabs(g_track_result.steering_value) < 15.0f)
-                    Speed_base = 1300;
+                    Speed_base = 1350;
                 else
-                    Speed_base = 1100;
+                    Speed_base = 1250;
 
 				Steer_Ctrl_PPDD.Target = 0;
 				Steer_Ctrl_PPDD.Actual = g_track_result.steering_value;
@@ -141,7 +141,7 @@ int main_process(void)
 
                 Tar_Left  = Speed_base - (int16_t)Steer_Ctrl_PPDD.Out;
                 Tar_Right = Speed_base + (int16_t)Steer_Ctrl_PPDD.Out;
-
+                
                 // Steer_PID.Target = 0;
                 // Steer_PID.Actual = g_track_result.steering_value * 10.0f;
                 // PID_POS_Update(&Steer_PID);
@@ -165,15 +165,10 @@ int main_process(void)
         }
 
 
-        if (Time_Count2 >= 15)// 10ms * 15 = 150ms 显示周期
+        if (Time_Count2 >= 25)// 10ms * 25 显示周期
         {
             Time_Count2 = 0;
-
-            // 不消费 finish_flag，直接显示（可能比控制周期旧一帧，不影响调试）
-            // ips200_show_gray_image(0, 32,
-            //     mt9v03x_image[0], MT9V03X_W, MT9V03X_H,
-            //     MT9V03X_W, MT9V03X_H, TrackRecognition_GetThreshold());
-            // TrackRecognition_DrawOverlay(32);
+            // 图像不显示
 
             // 调试：观察赛道偏差和基础速度
             ips200_show_float(0, 160, g_track_result.steering_value, 6, 2);

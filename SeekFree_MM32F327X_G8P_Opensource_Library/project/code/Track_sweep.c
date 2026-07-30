@@ -242,7 +242,7 @@ static int16 otsu_longest_white_col(void)
 // ============================================================
 // 逐行扫描：底行从种子起扫，上行从上一行边界偏移起扫
 // ============================================================
-#define SWEEP_OFFSET  10   // 上行搜索起点向内偏移量
+#define SWEEP_OFFSET  8   // 上行搜索起点向内偏移量
 #define SWEEP_MAX_ROWS 90   // 只扫近处行数，row 30~119
 
 static void sweep_boundaries(void)
@@ -413,9 +413,9 @@ static void sweep_boundaries(void)
 // 结果：0=直道  >0=右弯  <0=左弯  典型值 0~40
 // ============================================================
 #define STEER_NEAR_ROWS  90   // 只取近处行数
-// 权重
-#define STEER_W_MAX   2.5f    // 作为起点的权重
-#define STEER_W_MIN   2.0f    // 到远端的权重
+// 权重：近处(底) → 远处(行30)，本次调为远重近轻以提前转向
+#define STEER_W_NEAR   2.0f    // 起点(最底)权重
+#define STEER_W_FAR    2.8f    // 远端(row30)权重
 
 static void calc_steering_value(void)
 {
@@ -441,9 +441,9 @@ static void calc_steering_value(void)
         return;
     }
 
-    // 只算一次：每往上一行，权重减少多少
-    float step = (STEER_W_MAX - STEER_W_MIN) / (float)(start_row - end_row);
-    float w = STEER_W_MAX;
+    // 从近处向远处递增权重
+    float step = (STEER_W_FAR - STEER_W_NEAR) / (float)(start_row - end_row);
+    float w = STEER_W_NEAR;
     float total_dev = 0.0f, total_w = 0.0f;
 
     for (int16 row = start_row; row >= end_row; row--)
@@ -457,8 +457,8 @@ static void calc_steering_value(void)
             total_dev += dev * w;
             total_w   += w;
         }
-        w -= step; // 下一行(更远处)线性递减
-        if (w < STEER_W_MIN) w = STEER_W_MIN;
+        w += step; // 下一行(更远处)权重递增
+        if (w > STEER_W_FAR) w = STEER_W_FAR;
     }
     g_track_result.steering_value = (total_w > 0.0f) ? (total_dev / total_w) : 0.0f;
 }

@@ -724,7 +724,7 @@ int Debug_MT9V03x (void)
 
 
         /* 总钻风显示 */
-        if (Time_Count2 >= 10)// 10ms * 10 周期
+        if (Time_Count2 >= 25)// 10ms * 25 周期
         {
             Time_Count2 = 0;
 
