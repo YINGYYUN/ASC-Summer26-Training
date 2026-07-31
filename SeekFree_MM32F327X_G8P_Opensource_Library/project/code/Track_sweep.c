@@ -414,8 +414,8 @@ static void sweep_boundaries(void)
 // ============================================================
 #define STEER_NEAR_ROWS  90   // 只取近处行数
 // 权重：近处(底) → 远处(行30)，本次调为远重近轻以提前转向
-#define STEER_W_NEAR   2.0f    // 起点(最底)权重
-#define STEER_W_FAR    2.8f    // 远端(row30)权重
+#define STEER_W_NEAR   2.5f    // 起点(最底)权重
+#define STEER_W_FAR    2.0f    // 远端(row30)权重
 
 static void calc_steering_value(void)
 {
