@@ -129,7 +129,7 @@ int main_process(void)
 
                 // 速度分级：赛道偏差小 → 高速，偏差大 → 低速
                 if (fabs(g_track_result.steering_value) < 15.0f)
-                    Speed_base = 1400;
+                    Speed_base = 1500;
                 else
                     Speed_base = 1200;
 
