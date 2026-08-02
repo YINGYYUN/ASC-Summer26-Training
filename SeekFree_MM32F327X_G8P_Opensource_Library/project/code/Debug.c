@@ -421,8 +421,8 @@ int Debug_Motor (void)
 
     Debug_Motor_UI();
     ips200_show_string(0 ,48 , ">");
-    ips200_printf(58 ,48 , "%d  ", pwm[1]);
-    ips200_printf(58 ,64 , "%d  ", pwm[2]);
+    ips200_printf(58 ,48 , "%d   ", pwm[1]);
+    ips200_printf(58 ,64 , "%d   ", pwm[2]);
 
     // 电机调试界面光标 标志位
     // 正常的命名为Debug_Motor_flag，此处进行简化
@@ -480,7 +480,7 @@ int Debug_Motor (void)
                     pwm[Debug_M_f] += 100;
                     if (pwm[Debug_M_f] > 10000)pwm[Debug_M_f] = 10000;
                     Motor_Set(Debug_M_f, pwm[Debug_M_f]);
-                    ips200_printf(58 ,32 + 16*Debug_M_f, "%d  ", pwm[Debug_M_f]);
+                    ips200_printf(58 ,32 + 16*Debug_M_f, "%d   ", pwm[Debug_M_f]);
                 }
                 else if (KEY_SHORT_PRESS == key_get_state(KEY_DOWN))
                 {
@@ -488,7 +488,7 @@ int Debug_Motor (void)
                     pwm[Debug_M_f] -= 100;
                     if (pwm[Debug_M_f] < -10000)pwm[Debug_M_f] = -10000;
                     Motor_Set(Debug_M_f, pwm[Debug_M_f]);
-                    ips200_printf(58 ,32 + 16*Debug_M_f, "%d  ", pwm[Debug_M_f]);
+                    ips200_printf(58 ,32 + 16*Debug_M_f, "%d   ", pwm[Debug_M_f]);
                 }
                 else if (KEY_SHORT_PRESS == key_get_state(KEY_CONFIRM) || 
                         KEY_SHORT_PRESS == key_get_state(KEY_BACK))
@@ -505,8 +505,8 @@ int Debug_Motor (void)
                 {
                     Time_Count2 = 0;
                     
-                    ips200_printf(56 ,96 , "%d  ", ENC_left_CNT * 10);
-                    ips200_printf(56 ,112, "%d  ", ENC_right_CNT * 10);
+                    ips200_printf(56 ,96 , "%d   ", ENC_left_CNT * 10);
+                    ips200_printf(56 ,112, "%d   ", ENC_right_CNT * 10);
                     // ips200_printf(56 ,128, "%d  ", 0);
                     // ips200_printf(56 ,144, "%d  ", 0);
                 }
@@ -519,8 +519,8 @@ int Debug_Motor (void)
         {
             Time_Count2 = 0;
             
-            ips200_printf(56 ,96 , "%d  ", ENC_left_CNT * 10);
-            ips200_printf(56 ,112, "%d  ", ENC_right_CNT * 10);
+            ips200_printf(56 ,96 , "%d   ", ENC_left_CNT * 10);
+            ips200_printf(56 ,112, "%d   ", ENC_right_CNT * 10);
             // ips200_printf(56 ,128, "%d  ", 0);
             // ips200_printf(56 ,144, "%d  ", 0);
         }
@@ -655,10 +655,10 @@ int Debug_Motor_PID (void)
                 {
                     Time_Count2 = 0;
 
-                    ips200_printf(56 ,96 , "%d  ", (int16_t)Motor_1_PID.Actual);
-                    ips200_printf(56 ,112, "%d  ", (int16_t)Motor_2_PID.Actual);
-                    ips200_printf(56 ,128, "%d  ", (int16_t)Motor_1_PID.Out);
-                    ips200_printf(56 ,144, "%d  ", (int16_t)Motor_2_PID.Out);
+                    ips200_printf(56 ,96 , "%d   ", (int16_t)Motor_1_PID.Actual);
+                    ips200_printf(56 ,112, "%d   ", (int16_t)Motor_2_PID.Actual);
+                    ips200_printf(56 ,128, "%d   ", (int16_t)Motor_1_PID.Out);
+                    ips200_printf(56 ,144, "%d   ", (int16_t)Motor_2_PID.Out);
 					printf("%d,%d,%d\n", (int16_t)Motor_1_PID.Actual, (int16_t)Motor_1_PID.Target, (int16_t)Motor_1_PID.Out);
                 }
             }
@@ -670,10 +670,10 @@ int Debug_Motor_PID (void)
         {
             Time_Count2 = 0;
 
-            ips200_printf(56 ,96 , "%d  ", (int16_t)Motor_1_PID.Actual);
-            ips200_printf(56 ,112, "%d  ", (int16_t)Motor_2_PID.Actual);
-            ips200_printf(56 ,128, "%d  ", (int16_t)Motor_1_PID.Out);
-            ips200_printf(56 ,144, "%d  ", (int16_t)Motor_2_PID.Out);
+            ips200_printf(56 ,96 , "%d   ", (int16_t)Motor_1_PID.Actual);
+            ips200_printf(56 ,112, "%d   ", (int16_t)Motor_2_PID.Actual);
+            ips200_printf(56 ,128, "%d   ", (int16_t)Motor_1_PID.Out);
+            ips200_printf(56 ,144, "%d   ", (int16_t)Motor_2_PID.Out);
 			printf("%d,%d,%d\n", (int16_t)Motor_1_PID.Actual, (int16_t)Motor_1_PID.Target, (int16_t)Motor_1_PID.Out);
         }
         
@@ -965,7 +965,13 @@ int Debug_IMU (void)
     }
 }
 
-
+//  ####   #####  #   #   ###   #####  #####          ####  ####   #####  #      
+//  #   #  #      ## ##  #   #    #    #             #      #   #    #    #      
+//  ####   #####  # # #  #   #    #    #####   ###   #      ####     #    #      
+//  #  #   #      #   #  #   #    #    #             #      #  #     #    #      
+//  #   #  #####  #   #   ###     #    #####          ####  #   #    #    #####  
+//  
+// [三级界面]遥控界面
 int Debug_Remote_Crtl   (void)
 {
     #define REMOTE_BASE_SPEED  800          // 直行灵敏度(速度环读取实际值为编码器脉冲*10/5ms)

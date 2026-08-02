@@ -23,7 +23,7 @@ int main_process(void)
     // 电机速度重置
     Motor_ALL_Zero();
 
-    Speed_PID_Crtl_Enable = 0;
+    Speed_PID_Crtl_Enable = 1;
 
     // 识别结果初始化
     TrackRecognition_Init();
@@ -60,13 +60,12 @@ int main_process(void)
             // 发车
             car_state = Car_Running;
             ips200_show_string(48 ,192, "Run~");
-            Speed_PID_Crtl_Enable = 1;
         }
         else if (KEY_SHORT_PRESS == key_get_state(KEY_BACK))
         {
             key_clear_state(KEY_BACK);
 
-            Speed_PID_Crtl_Enable = 0;
+			Speed_PID_Crtl_Enable = 0;
             // 切换到空闲状态
             car_state = Car_IDLE;
             // 电机速度重置
@@ -82,11 +81,11 @@ int main_process(void)
 
         if (car_state == Car_Stop)
         {
-            Speed_PID_Crtl_Enable = 0;
-            // 电机速度重置
-            Motor_ALL_Zero();
+            
             // 重置PID中间量
+            // 同时速度环设置为 0
             PID_ALL_Init();
+            
             // 识别结果初始化
             TrackRecognition_Init();
             // 斑马线计数重置
@@ -95,6 +94,8 @@ int main_process(void)
             car_state = Car_IDLE;
             // 加快流程,只会在屏幕指示IDLE状态,STOP状态跳过显示
             ips200_show_string(48 ,192, "IDLE");
+            // 指示Speed_Base为0
+            ips200_show_uint (120, 160, 0, 4);
         }
 
 
