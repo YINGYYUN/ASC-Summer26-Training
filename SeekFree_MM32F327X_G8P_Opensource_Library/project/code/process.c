@@ -66,6 +66,8 @@ int main_process(void)
         {
             key_clear_state(KEY_BACK);
 
+            Speed_PID_Crtl_Enable = 0;
+            // 切换到空闲状态
             car_state = Car_IDLE;
             // 电机速度重置
             Motor_ALL_Zero();
@@ -91,7 +93,7 @@ int main_process(void)
             Zebra_Zone_Count = 0;
             // 切换到空闲状态，防止反复触发停车相关代码
             car_state = Car_IDLE;
-            // 加快流程,只会在屏幕指示IDLE状态,STOP状态跳过
+            // 加快流程,只会在屏幕指示IDLE状态,STOP状态跳过显示
             ips200_show_string(48 ,192, "IDLE");
         }
 
@@ -131,7 +133,7 @@ int main_process(void)
                 if (fabs(g_track_result.steering_value) < 15.0f)
                     Speed_base = 1500;
                 else
-                    Speed_base = 1200;
+                    Speed_base = 1300;
 
 				Steer_Ctrl_PPDD.Target = 0;
 				Steer_Ctrl_PPDD.Actual = g_track_result.steering_value;

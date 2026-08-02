@@ -222,7 +222,7 @@ void PID_ALL_Init(void)
 {
 	PID_POS_Init(&Steer_PID);
 	PID_POS_Init(&GZ_PID);
-	PID_INC_Init(&Motor_1_PID);    
+	PID_INC_Init(&Motor_1_PID);
     PID_INC_Init(&Motor_2_PID);
 	STEER_CTRL_Init(&Steer_Ctrl_PPDD);
 }

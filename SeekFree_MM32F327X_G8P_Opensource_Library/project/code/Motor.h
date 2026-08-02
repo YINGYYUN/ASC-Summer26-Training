@@ -15,10 +15,11 @@
 /**********************************************************/
 
 // 电机驱动(DRV8701)引脚配置	
-#define MOTOR_1_DIR_PIN             ( A0 )
-#define MOTOR_1_PWM_CHANNEL         TIM5_PWM_CH2_A1
-#define MOTOR_2_DIR_PIN             ( A2 )			
-#define MOTOR_2_PWM_CHANNEL         TIM5_PWM_CH4_A3	
+#define MOTOR_1_DIR_PIN             ( A0 )			
+#define MOTOR_1_PWM_CHANNEL         TIM5_PWM_CH3_A2	
+#define MOTOR_2_DIR_PIN             ( A1 )
+#define MOTOR_2_PWM_CHANNEL         TIM5_PWM_CH4_A3
+
 
 // PWM 频率 10kHz
 #define MOTOR_PWM_FREQ              ( 10000 )
@@ -48,10 +49,10 @@ void    Motor_ALL_Zero              (void);
 #define ENC_2_P_CH1				TIM4_ENCODER_CH1_B6
 #define ENC_2_P_CH2				TIM4_ENCODER_CH2_B7
 // 编码器(正交)调用二次宏定义
-#define ENC1_GET()              (encoder_get_count(ENCODER_1))
+#define ENC1_GET()              (- encoder_get_count(ENCODER_1))
 #define ENC1_CLEAR()            encoder_clear_count(ENCODER_1)
 
-#define ENC2_GET()              (-encoder_get_count(ENCODER_2))
+#define ENC2_GET()              (encoder_get_count(ENCODER_2))
 #define ENC2_CLEAR()            encoder_clear_count(ENCODER_2)
 
 // 左右编码器计数值全局变量

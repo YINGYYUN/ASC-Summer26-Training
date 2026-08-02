@@ -39,6 +39,7 @@ void Motor_Set (uint8 motor, int16 duty)
     {
         dir_pin = MOTOR_2_DIR_PIN;
         pwm_ch  = MOTOR_2_PWM_CHANNEL;
+		duty = -duty;
     }
 
     if(duty > 0)
