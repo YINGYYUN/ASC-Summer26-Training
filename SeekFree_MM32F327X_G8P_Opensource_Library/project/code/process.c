@@ -10,11 +10,16 @@
 typedef enum
 {
     Car_Stop        = 0, // 停车状态
-    Car_Running     = 1, // 运行状态
-    Car_IDLE        = 2, // 空闲状态(和停车状态区分)
+    Car_Launching   = 1, // 发车状态(起步斜坡中)
+    Car_Running     = 2, // 运行状态
+    Car_IDLE        = 3, // 空闲状态
 } Car_MAIN_State;
 // 默认停车
 static Car_MAIN_State car_state = Car_IDLE;
+
+// 起步斜坡：防止目标速度突变导致窜跳
+#define SPEED_RAMP_STEPS        50          // 50 × 10ms = 500ms
+static uint8_t speed_ramp_cnt = 0;
 
 int main_process(void)
 {
@@ -40,7 +45,6 @@ int main_process(void)
 
     ips200_show_string(8  ,0  , "[Process]");
     ips200_show_string(0  ,16 , "==============================");
-    
     ips200_show_string(0  ,192, "State:IDLE");
 
     while(1)
@@ -57,8 +61,9 @@ int main_process(void)
         if (KEY_SHORT_PRESS == key_get_state(KEY_CONFIRM))
         {
             key_clear_state(KEY_CONFIRM);
-            // 发车
-            car_state = Car_Running;
+            // 发车：先进入起步斜坡
+            speed_ramp_cnt = 0;
+            car_state = Car_Launching;
             ips200_show_string(48 ,192, "Run~");
         }
         else if (KEY_SHORT_PRESS == key_get_state(KEY_BACK))
@@ -126,7 +131,7 @@ int main_process(void)
                 }
             }
 
-            if (car_state == Car_Running)
+            if (car_state == Car_Running || car_state == Car_Launching)
             {
                 imu963ra_get_gyro();
 
@@ -136,7 +141,23 @@ int main_process(void)
                 else
                     Speed_base = 1300;
 
-				Steer_Ctrl_PPDD.Target = 0;
+                // 起步斜坡：在 Launching 状态线性爬升 Speed_base，完成后切到 Running
+				// 通过乘 factor 系数实现
+                if (car_state == Car_Launching)
+                {
+                    if (speed_ramp_cnt < SPEED_RAMP_STEPS)
+                    {
+                        speed_ramp_cnt++;
+                        float factor = (float)speed_ramp_cnt / (float)SPEED_RAMP_STEPS;
+                        Speed_base = (int16_t)((float)Speed_base * factor);
+                    }
+                    else
+                    {
+                        car_state = Car_Running;
+                    }
+                }
+
+                Steer_Ctrl_PPDD.Target = 0;
 				Steer_Ctrl_PPDD.Actual = g_track_result.steering_value;
                 
                 Steer_Ctrl_PPDD.Gyro = (imu963ra_gyro_z + 7)/20*20;

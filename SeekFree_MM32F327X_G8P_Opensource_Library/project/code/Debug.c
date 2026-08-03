@@ -271,7 +271,7 @@ int Debug_Page_Menu(void)
             // 从子界面返回后
             ips200_clear();
             Debug_Page_Menu_UI(1);
-            ips200_show_string(0  ,112, ">");
+            ips200_show_string(0  ,128, ">");
         }
 
         
@@ -982,6 +982,9 @@ int Debug_Remote_Crtl   (void)
     int8_t LH = 0, LV = 0, RH = 0, RV = 0;
     int16_t tar_left = 0, tar_right = 0;
 
+    // 重置PID中间量
+    PID_ALL_Init();
+    // 电机速度重置
     Motor_ALL_Zero();
     Speed_PID_Crtl_Enable = 1;
 
@@ -1001,6 +1004,9 @@ int Debug_Remote_Crtl   (void)
 
             // 停止电机，关闭 PID，返回上一级界面
             Speed_PID_Crtl_Enable = 0;
+            // 重置PID中间量
+            PID_ALL_Init();
+            // 电机速度重置
             Motor_ALL_Zero();
             ips200_clear();
             return 0;
