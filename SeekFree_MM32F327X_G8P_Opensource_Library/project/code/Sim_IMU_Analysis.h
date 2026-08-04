@@ -67,7 +67,7 @@ typedef enum {
 } Gyro_CalibState_t;
 
 // 零飘校准校准需要的样本数
-#define GYRO_CALIB_TARGET_SAMPLES    100  
+#define GYRO_CALIB_TARGET_SAMPLES    200  
 
 extern Gyro_Calib_StructDef gyro_cal;
 

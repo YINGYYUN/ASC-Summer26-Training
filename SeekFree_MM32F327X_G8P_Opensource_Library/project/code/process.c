@@ -138,7 +138,9 @@ int main_process(void)
                 imu963ra_get_gyro();
 
                 // 速度分级：赛道偏差小 → 高速，偏差大 → 低速
-                if (fabs(g_track_result.steering_value) < 15.0f)
+				if (fabs(g_track_result.steering_value) < 6.0f)
+                    Speed_base = 1700;
+                else if (fabs(g_track_result.steering_value) < 12.0f)
                     Speed_base = 1500;
                 else
                     Speed_base = 1300;
@@ -162,28 +164,11 @@ int main_process(void)
                 Steer_Ctrl_PPDD.Target = 0;
 				Steer_Ctrl_PPDD.Actual = g_track_result.steering_value;
                 
-                Steer_Ctrl_PPDD.Gyro = (imu963ra_gyro_z + 7)/20*20;
+                Steer_Ctrl_PPDD.Gyro = (imu963ra_gyro_z + 10)/20*20;
                 STEER_CTRL_Update(&Steer_Ctrl_PPDD);
 
                 Tar_Left  = Speed_base - (int16_t)Steer_Ctrl_PPDD.Out;
                 Tar_Right = Speed_base + (int16_t)Steer_Ctrl_PPDD.Out;
-                
-                // Steer_PID.Target = 0;
-                // Steer_PID.Actual = g_track_result.steering_value * 10.0f;
-                // PID_POS_Update(&Steer_PID);
-                // GZ_PID.Target = Steer_PID.Out;
-                // GZ_PID.Actual = imu963ra_gyro_transition((imu963ra_gyro_z + 7)/20*20);
-                // PID_POS_Update(&GZ_PID);
-
-                // Tar_Left = Speed_base - (int16_t)GZ_PID.Out;
-                // Tar_Right = Speed_base + (int16_t)GZ_PID.Out;
-
-                // if (8000 <= Tar_Left)  { Tar_Left  =  8000; }
-                // if (Tar_Left <= -8000) { Tar_Left  = -8000; }
-                // if (8000 <= Tar_Right) { Tar_Right =  8000; }
-                // if (Tar_Right <= -8000){ Tar_Right = -8000; }
-                // Motor_Set(1, Tar_Left);
-                // Motor_Set(2, Tar_Right);
 
                 Motor_1_PID.Target = Tar_Left;
                 Motor_2_PID.Target = Tar_Right;
@@ -199,9 +184,9 @@ int main_process(void)
             // 调试：观察赛道偏差和基础速度
             ips200_show_float(0, 160, g_track_result.steering_value, 6, 2);
             ips200_show_uint (120, 160, (uint16)Speed_base, 4);
-            // ips200_show_float(0, 176, Steer_Ctrl_PPDD.Out, 6, 2);
-            ips200_show_float(0, 176, Steer_PID.Out, 6, 2);
-            ips200_show_float(120, 176, GZ_PID.Out, 6, 2);
+            ips200_show_float(0, 176, Steer_Ctrl_PPDD.Out, 6, 2);
+            // ips200_show_float(0, 176, Steer_PID.Out, 6, 2);
+            // ips200_show_float(120, 176, GZ_PID.Out, 6, 2);
         }
     }
 }

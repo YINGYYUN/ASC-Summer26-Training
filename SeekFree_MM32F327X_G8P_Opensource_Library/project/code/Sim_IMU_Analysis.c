@@ -176,9 +176,9 @@ void IMU_Gyro_Apply(Gyro_Calib_StructDef *cal, float *gx, float *gy, float *gz)
     // 未校准时，应用默认偏移
     else
     {
-        *gx = (float)imu963ra_gyro_x - 7;
-        *gy = (float)imu963ra_gyro_y + 8;
-        *gz = (float)imu963ra_gyro_z + 7;
+        *gx = (float)imu963ra_gyro_x - 6;
+        *gy = (float)imu963ra_gyro_y + 5;
+        *gz = (float)imu963ra_gyro_z + 10;
     }
 
     // "死区"

@@ -123,6 +123,8 @@ void Debug_IMU_UI(void)
     ips200_show_string(0  ,224, "Rol:NaN");
     ips200_show_string(0  ,240, "Yaw:NaN");
     ips200_show_string(0  ,256, "Pih:NaN");
+    // 空行
+    ips200_show_string(0  ,288, "G_Cal:NaN        ");
 }
 
 void Debug_Remote_Crtl_UI(void)
@@ -876,6 +878,7 @@ int Debug_IMU (void)
         if (IMU_Gyro_Calib_Check(&gyro_cal) == GYRO_CALIB_STATE_DONE)  // 零飘校准完成
         {
             ips200_show_string(40 ,32 , "#GYRO#DONE");
+            ips200_printf(48 ,288, "%d %d %d",gyro_cal.offset_x, gyro_cal.offset_y, gyro_cal.offset_z);
             break;  // 结束零飘校准
         }
         if (KEY_SHORT_PRESS == key_get_state(KEY_BACK)) // 强制零飘校准退出
@@ -907,12 +910,13 @@ int Debug_IMU (void)
                 if (IMU_Gyro_Calib_Check(&gyro_cal) == GYRO_CALIB_STATE_DONE)  // 零飘校准完成
                 {
                     ips200_show_string(40 ,32 , "#GYRO#DONE");
+                    ips200_printf(48 ,288, "%d %d %d",gyro_cal.offset_x, gyro_cal.offset_y, gyro_cal.offset_z);
                     break;  // 结束零飘校准
                 }                                                             
                 if (KEY_SHORT_PRESS == key_get_state(KEY_BACK)) // 强制零飘校准退出
                 {
                     key_clear_state(KEY_BACK);
-
+                    ips200_show_string(48 ,288, "NaN        ");
                     ips200_show_string(40 ,32 , "#GYRO#STOP");
                     break;  // 中止零飘校准
                 }        
