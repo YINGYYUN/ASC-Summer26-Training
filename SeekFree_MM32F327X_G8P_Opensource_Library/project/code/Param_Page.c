@@ -56,6 +56,8 @@ int Param_Page_Menu(void)
     param_page_init();          // 构建菜单
     menu_show_all();            // 清屏 + 刷新
 
+    key_clear_state(KEY_MID);
+
     while(1)
     {
         // 短按: 上键
@@ -76,7 +78,7 @@ int Param_Page_Menu(void)
         else if (KEY_SHORT_PRESS == key_get_state(KEY_CONFIRM))
         {
             key_clear_state(KEY_CONFIRM);
-            key_enter_btn();
+            key_right_btn();
             menu_show();
         }
         // 短按: 返回键
@@ -84,13 +86,7 @@ int Param_Page_Menu(void)
         {
             key_clear_state(KEY_BACK);
 
-            if (key->select == true)
-            {
-                // 正在修改参数 → 切换步进值
-                key_quit_btn();
-                menu_show();
-            }
-            else if (key->father->father == NULL)
+            if (key->father->father == NULL)
             {
                 // 未选中 且 已在根层 → 保存并退出
                 Param_Save();           // 持久化到 Flash
@@ -100,9 +96,15 @@ int Param_Page_Menu(void)
             else
             {
                 // 未选中 且在子文件夹内 → 回退到上一级
-                key_quit_btn();
+                key_left_btn();
                 menu_show();
             }
+        }
+        else if (KEY_SHORT_PRESS == key_get_state(KEY_MID))
+        {
+            key_clear_state(KEY_MID);
+            key_mid_btn();
+            menu_show();
         }
     }
 }

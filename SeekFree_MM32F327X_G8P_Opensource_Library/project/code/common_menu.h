@@ -63,8 +63,8 @@ void        menu_show_all                   (void);     // 清屏 + 刷新显示
 void        menu_init                       (void);     // [DEMO] 多级菜单测试, 可删除
 
 // 二选一: 四键方案 或 五键方案
-#define FOUR_BUTTON         // 四键方案(默认)  若要五键方案请注释此行, 并启用下方 FIVE_BUTTON
-// #define FIVE_BUTTON
+// #define FOUR_BUTTON         // 四键方案(默认)  若要五键方案请注释此行, 并启用下方 FIVE_BUTTON
+ #define FIVE_BUTTON
 
 // 外部按键接口(二次封装好的逻辑, 直接在按键扫描中调用)
 #ifdef FOUR_BUTTON
@@ -77,9 +77,9 @@ void        key_quit_btn                    (void);     // 退出 / 步进切换
 #ifdef FIVE_BUTTON
 void        key_up_btn                      (void);     // 上 / 参数加
 void        key_down_btn                    (void);     // 下 / 参数减
-void        key_left_btn                    (void);     // 左: 退出 / 步进减
-void        key_right_btn                   (void);     // 右: 进入 / 步进加
-void        key_mid_btn                     (void);     // 中: 进入文件夹 / 切换 / 选中
+void        key_left_btn                    (void);     // 左: 取消选中 / 退出
+void        key_right_btn                   (void);     // 右: 进入 
+void        key_mid_btn                     (void);     // 中: 步进切换
 #endif
 
 

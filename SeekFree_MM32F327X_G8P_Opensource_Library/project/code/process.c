@@ -93,7 +93,7 @@ int main_process(void)
             
             // 识别结果初始化
             TrackRecognition_Init();
-            // 斑马线计数重置
+            // 斑马线计数重置+
             Zebra_Zone_Count = 0;
             // 切换到空闲状态，防止反复触发停车相关代码
             car_state = Car_IDLE;

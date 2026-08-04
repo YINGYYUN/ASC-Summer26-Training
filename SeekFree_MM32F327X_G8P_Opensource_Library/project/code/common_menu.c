@@ -563,7 +563,7 @@ void key_quit_btn(void)
 
 // 五键方案: 上 / 下 / 左 / 右 / 中
 
-// 上键: 上移 / 参数加
+// 上键: 上 / 参数加
 void key_up_btn(void)
 {
     if (key->select == false)
@@ -572,7 +572,7 @@ void key_up_btn(void)
         key_plus();
 }
 
-// 下键: 下移 / 参数减
+// 下键: 下 / 参数减
 void key_down_btn(void)
 {
     if (key->select == false)
@@ -581,42 +581,8 @@ void key_down_btn(void)
         key_sub();
 }
 
-// 左键: 退出 / 步进减
-void key_left_btn(void)
-{
-    // 选中数值时 左键 = 步进值减小
-    if (key->select == true)
-    {
-        setup_ctrl_sub();
-        return;
-    }
-
-    // 否则执行退出操作(不允许退到 head 层以上)
-    if (key->father->father == NULL) return;
-    key = key->father;
-    ips200_clear();
-}
-
-// 右键: 进入 / 步进加
+// 右键: 进入 / 选中 / 切换bool
 void key_right_btn(void)
-{
-    // 选中数值时 右键 = 步进值增大
-    if (key->select == true)
-    {
-        setup_ctrl_plus();
-        return;
-    }
-
-    // 否则进入子菜单
-    if (key->sons > 0)
-    {
-        key = key->first_son;
-        ips200_clear();
-    }
-}
-
-// 中键: 进入文件夹 / 切换bool / 选中-取消选中
-void key_mid_btn(void)
 {
     if (key->kind == MENU_Folder)
         key_enter();
@@ -624,6 +590,31 @@ void key_mid_btn(void)
         key_toggle();
     else
         key_select();
+}
+
+// 左键: 取消选中 / 退出
+void key_left_btn(void)
+{
+    if (key->select == true)
+    {
+        key->select = false;    // 正在编辑 → 取消选中
+        return;
+    }
+    //执行退出操作(不允许退到 head 层以上)
+    if (key->father->father == NULL) return;
+    key = key->father;
+    ips200_clear();
+}
+
+// 中键: 步进切换
+void key_mid_btn(void)
+{
+    // 如果当前选中的是数值类型, 且处于选中状态, 则切换步进值
+    if (key->select == true)
+    {
+        setup_ctrl_plus();
+        return;
+    }
 }
 #endif
 /**********************************************************/
@@ -649,35 +640,35 @@ void menu_reset(void)
     key = NULL;
 }
 
-// ---- 以下为测试 DEMO, 可删除 ----
-int test = 10;
-float test1 = 2.2f;
-bool test2 = false;
-uint8_t test_u8 = 50;
-uint16_t test_u16 = 1000;
+// // ---- 以下为测试 DEMO, 可删除 ----
+// int test = 10;
+// float test1 = 2.2f;
+// bool test2 = false;
+// uint8_t test_u8 = 50;
+// uint16_t test_u16 = 1000;
 
-// 测试菜单(多级文件夹演示)
-void menu_init(void)
-{
-    menu_reset();
+// // 测试菜单(多级文件夹演示)
+// void menu_init(void)
+// {
+//     menu_reset();
 
-    Menu_Item *folder_1 = DynamicCreate_Menu_Folder(&head, "folder1");
-    DynamicCreate_Menu_Folder(&head, "folder2");
-    DynamicCreate_Menu_Folder(&head, "folder3");
-    DynamicCreate_Menu_Folder(&head, "folder4");
+//     Menu_Item *folder_1 = DynamicCreate_Menu_Folder(&head, "folder1");
+//     DynamicCreate_Menu_Folder(&head, "folder2");
+//     DynamicCreate_Menu_Folder(&head, "folder3");
+//     DynamicCreate_Menu_Folder(&head, "folder4");
 
-    DynamicCreate_Menu_Number(folder_1, "aaa", &test, int32_Box);
-    DynamicCreate_Menu_Number(folder_1, "bbb", &test1, float_Box);
-    DynamicCreate_Menu_Number(folder_1, "ccc", &test2, bool_Box);
+//     DynamicCreate_Menu_Number(folder_1, "aaa", &test, int32_Box);
+//     DynamicCreate_Menu_Number(folder_1, "bbb", &test1, float_Box);
+//     DynamicCreate_Menu_Number(folder_1, "ccc", &test2, bool_Box);
 
-    Menu_Item *folder_1_1 = DynamicCreate_Menu_Folder(folder_1, "sub_f1");
-    Menu_Item *folder_1_2 = DynamicCreate_Menu_Folder(folder_1, "sub_f2");
+//     Menu_Item *folder_1_1 = DynamicCreate_Menu_Folder(folder_1, "sub_f1");
+//     Menu_Item *folder_1_2 = DynamicCreate_Menu_Folder(folder_1, "sub_f2");
 
-    DynamicCreate_Menu_LimitNumber(folder_1_1, "u8_num",  &test_u8,  uint8_Box,  0, 100);
-    DynamicCreate_Menu_LimitNumber(folder_1_1, "u16_num", &test_u16, uint16_Box, 0, 10000);
+//     DynamicCreate_Menu_LimitNumber(folder_1_1, "u8_num",  &test_u8,  uint8_Box,  0, 100);
+//     DynamicCreate_Menu_LimitNumber(folder_1_1, "u16_num", &test_u16, uint16_Box, 0, 10000);
 
-    key = head.first_son;
-}
+//     key = head.first_son;
+// }
 /**********************************************************/
 /*------------------------------------[E] 菜单重置 & 测试 [E]*/
 /**********************************************************/

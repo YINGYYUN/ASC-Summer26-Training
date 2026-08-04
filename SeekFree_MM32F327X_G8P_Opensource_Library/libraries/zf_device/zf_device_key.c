@@ -122,10 +122,11 @@ void key_clear_state (key_index_enum key_n)
 //-------------------------------------------------------------------------------------------------------------------
 void key_clear_all_state (void)
 {
-    key_state[0] = KEY_RELEASE;
-    key_state[1] = KEY_RELEASE;
-    key_state[2] = KEY_RELEASE;
-    key_state[3] = KEY_RELEASE;
+    uint8 loop_temp = 0;
+    for(loop_temp = 0; KEY_NUMBER > loop_temp; loop_temp ++)
+    {
+        key_state[loop_temp] = KEY_RELEASE;
+    }
 }
 
 //-------------------------------------------------------------------------------------------------------------------
