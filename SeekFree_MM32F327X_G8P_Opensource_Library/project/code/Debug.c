@@ -975,12 +975,16 @@ int Debug_IMU (void)
 int Debug_Remote_Crtl   (void)
 {
     #define REMOTE_BASE_SPEED  800          // 直行灵敏度(速度环读取实际值为编码器脉冲*10/5ms)
-    #define REMOTE_STEER_SPEED 300          // 转向灵敏度(速度环读取实际值为编码器脉冲*10/5ms)
+    #define REMOTE_STEER_SPEED 400          // 转向灵敏度(速度环读取实际值为编码器脉冲*10/5ms)
+    #define REMOTE_ACCEL_MAX   25           // 加速度斜坡(每10ms周期最大变化量)
+    #define REMOTE_TIMEOUT_MS  50           // 断连保护超时(10ms * 50 = 500ms)
 
     Debug_Remote_Crtl_UI();
 
     int8_t LH = 0, LV = 0, RH = 0, RV = 0;
     int16_t tar_left = 0, tar_right = 0;
+    int16_t raw_left = 0, raw_right = 0;
+    uint16_t timeout_10ms = 0;                                                  // 断连计时器，单位10ms
 
     // 重置PID中间量
     PID_ALL_Init();
@@ -1026,31 +1030,59 @@ int Debug_Remote_Crtl   (void)
                     RV = (int8_t)atoi(strtok(NULL, ","));
 
                     // 差速映射：LV=油门(前后) RH=转向(左右)
-                    tar_left  = (int16_t)(LV * REMOTE_BASE_SPEED  / 100 + RH * REMOTE_STEER_SPEED / 100);
-                    tar_right = (int16_t)(LV * REMOTE_BASE_SPEED  / 100 - RH * REMOTE_STEER_SPEED / 100);
+                    raw_left  = (int16_t)(LV * REMOTE_BASE_SPEED  / 100 + RH * REMOTE_STEER_SPEED / 100);
+                    raw_right = (int16_t)(LV * REMOTE_BASE_SPEED  / 100 - RH * REMOTE_STEER_SPEED / 100);
 
                     // 限幅
-                    if(tar_left  >  REMOTE_BASE_SPEED) tar_left  =  REMOTE_BASE_SPEED;
-                    if(tar_left  < -REMOTE_BASE_SPEED) tar_left  = -REMOTE_BASE_SPEED;
-                    if(tar_right >  REMOTE_BASE_SPEED) tar_right =  REMOTE_BASE_SPEED;
-                    if(tar_right < -REMOTE_BASE_SPEED) tar_right = -REMOTE_BASE_SPEED;
+                    if(raw_left  >  REMOTE_BASE_SPEED) raw_left  =  REMOTE_BASE_SPEED;
+                    if(raw_left  < -REMOTE_BASE_SPEED) raw_left  = -REMOTE_BASE_SPEED;
+                    if(raw_right >  REMOTE_BASE_SPEED) raw_right =  REMOTE_BASE_SPEED;
+                    if(raw_right < -REMOTE_BASE_SPEED) raw_right = -REMOTE_BASE_SPEED;
 
-                    Motor_1_PID.Target = tar_left;
-                    Motor_2_PID.Target = tar_right;
-
-                    Time_Count1 = 0;                                            // 收到有效帧，重置断连计时
+                    timeout_10ms = 0;                                           // 收到有效帧，重置断连计时
                 }
             }
         }
 
-        /* 断连保护：0.5s 无有效帧则停车 */
-        if (Time_Count1 >= 50)                                                  // 10ms * 50 = 500ms
+        /* 10ms 定时处理 — 断连保护 + 加速度斜坡 */
+        if (Time_Count1 >= 1)
         {
-            Time_Count1 = 50;                                                   // 上限保持，避免溢出回绕
-            tar_left  = 0;
-            tar_right = 0;
-            Motor_1_PID.Target = 0;
-            Motor_2_PID.Target = 0;
+            Time_Count1 = 0;
+
+            // 断连保护
+            timeout_10ms++;
+            if (timeout_10ms >= REMOTE_TIMEOUT_MS)
+            {
+                timeout_10ms = REMOTE_TIMEOUT_MS;                               // 上限保持
+                raw_left  = 0;
+                raw_right = 0;
+            }
+
+            // 加速度斜坡 — 每10ms步进一次
+            if(tar_left < raw_left)
+            {
+                int16_t diff = raw_left - tar_left;
+                tar_left += (diff > REMOTE_ACCEL_MAX) ? REMOTE_ACCEL_MAX : diff;
+            }
+            else if(tar_left > raw_left)
+            {
+                int16_t diff = tar_left - raw_left;
+                tar_left -= (diff > REMOTE_ACCEL_MAX) ? REMOTE_ACCEL_MAX : diff;
+            }
+
+            if(tar_right < raw_right)
+            {
+                int16_t diff = raw_right - tar_right;
+                tar_right += (diff > REMOTE_ACCEL_MAX) ? REMOTE_ACCEL_MAX : diff;
+            }
+            else if(tar_right > raw_right)
+            {
+                int16_t diff = tar_right - raw_right;
+                tar_right -= (diff > REMOTE_ACCEL_MAX) ? REMOTE_ACCEL_MAX : diff;
+            }
+
+            Motor_1_PID.Target = tar_left;
+            Motor_2_PID.Target = tar_right;
         }
 
         /* 显示更新 */
@@ -1067,7 +1099,7 @@ int Debug_Remote_Crtl   (void)
             ips200_printf(48 ,96 , "%-5d ", (int16_t)Motor_1_PID.Actual);
             ips200_printf(120,96 , "%-5d ", (int16_t)Motor_2_PID.Actual);
 
-            if(Time_Count1 >= 50)
+            if (timeout_10ms >= REMOTE_TIMEOUT_MS)
                 ips200_show_string(0 ,112, "TIMEOUT - NO SIGNAL");
             else
                 ips200_show_string(0 ,112, "                   ");
