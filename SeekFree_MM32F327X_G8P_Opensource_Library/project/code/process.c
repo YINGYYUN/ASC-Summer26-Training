@@ -63,6 +63,8 @@ int main_process(void)
             key_clear_state(KEY_CONFIRM);
             // 发车：先进入起步斜坡
             speed_ramp_cnt = 0;
+            // 斑马线计数重置
+            Zebra_Zone_Count = 0;
             car_state = Car_Launching;
             ips200_show_string(48 ,192, "Run~");
         }
@@ -93,7 +95,7 @@ int main_process(void)
             
             // 识别结果初始化
             TrackRecognition_Init();
-            // 斑马线计数重置+
+            // 斑马线计数重置
             Zebra_Zone_Count = 0;
             // 切换到空闲状态，防止反复触发停车相关代码
             car_state = Car_IDLE;

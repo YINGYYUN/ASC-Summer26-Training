@@ -264,25 +264,30 @@ static void sweep_boundaries(void)
     int16 r = seed;
     while (r < IMG_W - 3 && mt9v03x_image[BOTTOM_ROW][r + 1] > th) r++;
 
-    // 扫到图像边缘视为丢线
-    g_track_result.left_boundary[BOTTOM_ROW]  = (l <= 2) ? -1 : l;
-    g_track_result.right_boundary[BOTTOM_ROW] = (r >= IMG_W - 3) ? -1 : r;
-
+    // 用原始 l/r 记录路宽（先于边界 clamp），供 Phase 2 初始化 s_last_valid_width
     if (l >= 0 && r >= 0 && l < r)
     {
-        g_track_result.center_line[BOTTOM_ROW] = (l + r) / 2;
-        g_track_result.valid_rows++;
         s_last_valid_width = r - l;
     }
 
-    int16 prev_l = l, prev_r = r;
-    uint8 lost_consecutive = 0;  // 连续双边都丢的行数
-    int16 clean_from = sweep_end_row;  // sweep_end_row 以上行未扫描，需清除上帧残留
+    // 扫到图像边缘视为丢线（边界数组用 clamp 后的值）
+    g_track_result.left_boundary[BOTTOM_ROW]  = (l <= 2) ? -1 : l;
+    g_track_result.right_boundary[BOTTOM_ROW] = (r >= IMG_W - 3) ? -1 : r;
 
-    // ---- 上行：从上一行边界 + 偏移开始，白黑黑判定 ----
+    int16 prev_l = l, prev_r = r;
+    uint8 lost_consecutive = 0;
+    int16 clean_from = sweep_end_row;
+
+    // 十字路口检测：连续白区双丢 ≥10 行 → 记录区间
+    #define CROSS_THRESHOLD     10
+    uint8  cross_cnt = 0;
+    int16  cross_start = -1;  // 十字近端（row 较大）
+    int16  cross_end   = -1;  // 十字远端（row 较小）
+
+    // ==== Phase 1：逐行扫边界，只填 left/right ====
     for (int16 row = BOTTOM_ROW - 1; row >= sweep_end_row; row--)
     {
-        // 左边界：从 prev_l + OFFSET（向内移）向左扫
+        // ---- 左边界 ----
         l = prev_l + SWEEP_OFFSET;
         if (l > IMG_W - 4) l = IMG_W - 4;
         if (mt9v03x_image[row][l] > th)
@@ -301,7 +306,7 @@ static void sweep_boundaries(void)
                 l--;
         }
 
-        // 右边界：从 prev_r - OFFSET（向内移）向右扫
+        // ---- 右边界 ----
         r = prev_r - SWEEP_OFFSET;
         if (r < 2) r = 2;
         if (mt9v03x_image[row][r] > th)
@@ -327,66 +332,92 @@ static void sweep_boundaries(void)
         g_track_result.left_boundary[row]  = l;
         g_track_result.right_boundary[row] = r;
 
+        // 刷新扫线起点（双边有效才更新）
         if (l >= 0 && r >= 0 && l < r)
-        {
-            g_track_result.center_line[row] = (l + r) / 2;
-            g_track_result.valid_rows++;
-            s_last_valid_width = r - l;   // 记住最近有效路宽
-            prev_l = l;
-            prev_r = r;
-        }
-        else if (l >= 0)
-        {
-            g_track_result.center_line[row] = l + s_last_valid_width / 2;
-        }
-        else if (r >= 0)
-        {
-            g_track_result.center_line[row] = r - s_last_valid_width / 2;
-        }
-        else
-        {
-            // 双边都丢：清除上帧残留的中线，绘制时不显示
-            g_track_result.center_line[row] = IMG_CENTER;
-        }
+        { prev_l = l; prev_r = r; }
 
-        // 双边都丢：先区分是"真黑区"还是"全白无边缘"(如十字)
-        // 采样中心区域，存在白像素则不视为黑区
+        // 双边都丢：区分黑区/白区，控制扫线终止
         if (l < 0 && r < 0)
         {
             prev_l = seed;
             prev_r = seed;
 
-            uint8 is_black_zone = 1;  // 默认是黑区
+            uint8 is_black_zone = 1;
             for (int16 chk = IMG_W / 4; chk <= IMG_W * 3 / 4; chk += OTSU_COL_SAMPLE_STEP)
             {
                 if (mt9v03x_image[row][chk] > th)
-                { is_black_zone = 0; break; }  // 有白像素 → 不是黑区
+                { is_black_zone = 0; break; }
             }
 
             if (is_black_zone)
             {
-                if (++lost_consecutive >= 5)   // 连续 5 行真黑区，停止向上扫
+                cross_cnt = 0;                    // 黑区打断十字计数
+                if (++lost_consecutive >= 5)
                 { clean_from = row; break; }
             }
             else
             {
                 lost_consecutive = 0;
+
+                // 白区双丢：累计十字计数
+                cross_cnt++;
+                if (cross_cnt == CROSS_THRESHOLD)
+                { cross_start = row + (CROSS_THRESHOLD - 1); }  // 十字近端
+                cross_end = row;                                 // 十字远端跟随
             }
         }
         else
         {
             lost_consecutive = 0;
+            cross_cnt = 0;                        // 有边界 → 打断十字计数
         }
     }
 
-    // 清除 break 后未扫描行的上帧残留数据（否则绘制时会显示旧边线）
+    // 清除 break 后及扫描范围外的上帧残留边界
     if (clean_from > 0)
     {
         for (int16 i = clean_from - 1; i >= 0; i--)
         {
             g_track_result.left_boundary[i]  = -1;
             g_track_result.right_boundary[i] = -1;
-            g_track_result.center_line[i]    = IMG_CENTER;
+        }
+    }
+
+    // ==== Phase 2：遍历边界数组，合成中线 ====
+    for (int16 row = BOTTOM_ROW; row >= sweep_end_row; row--)
+    {
+        l = g_track_result.left_boundary[row];
+        r = g_track_result.right_boundary[row];
+
+        // 判断当前行是否在十字区间（禁用单边补线）
+        uint8 in_cross = (cross_start >= 0 && row <= cross_start && row >= cross_end);
+
+        if (l >= 0 && r >= 0 && l < r)
+        {
+            g_track_result.center_line[row] = (l + r) / 2;
+            g_track_result.valid_rows++;
+            s_last_valid_width = r - l;
+        }
+        else if (!in_cross && l >= 0)
+        {
+            g_track_result.center_line[row] = l + s_last_valid_width / 2;
+        }
+        else if (!in_cross && r >= 0)
+        {
+            g_track_result.center_line[row] = r - s_last_valid_width / 2;
+        }
+        else
+        {
+            g_track_result.center_line[row] = IMG_CENTER;
+        }
+    }
+
+    // cleanup 行也需复位中线
+    if (clean_from > 0)
+    {
+        for (int16 i = clean_from - 1; i >= 0; i--)
+        {
+            g_track_result.center_line[i] = IMG_CENTER;
         }
     }
 
