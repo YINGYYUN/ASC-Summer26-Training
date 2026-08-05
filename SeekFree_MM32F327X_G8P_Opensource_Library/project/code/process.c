@@ -138,7 +138,9 @@ int main_process(void)
                 imu963ra_get_gyro();
 
                 // 速度分级：赛道偏差小 → 高速，偏差大 → 低速
-				if (fabs(g_track_result.steering_value) < 6.0f)
+				if (fabs(g_track_result.steering_value) < 2.0f)
+                    Speed_base = 1800;
+				else if (fabs(g_track_result.steering_value) < 6.0f)
                     Speed_base = 1700;
                 else if (fabs(g_track_result.steering_value) < 12.0f)
                     Speed_base = 1500;
