@@ -18,7 +18,7 @@ typedef enum
 static Car_MAIN_State car_state = Car_IDLE;
 
 // 起步斜坡：防止目标速度突变导致窜跳
-#define SPEED_RAMP_STEPS        50          // 50 × 10ms = 500ms
+#define SPEED_RAMP_STEPS        55          // 50 × 10ms = 550ms
 static uint8_t speed_ramp_cnt = 0;
 
 int main_process(void)
@@ -138,11 +138,11 @@ int main_process(void)
                 imu963ra_get_gyro();
 
                 // 速度分级：赛道偏差小 → 高速，偏差大 → 低速
-				if (fabs(g_track_result.steering_value) < 2.0f)
-                    Speed_base = 1800;
-				else if (fabs(g_track_result.steering_value) < 6.0f)
+				if (fabs(g_track_result.steering_value) < 1.0f)
                     Speed_base = 1700;
-                else if (fabs(g_track_result.steering_value) < 12.0f)
+				else if (fabs(g_track_result.steering_value) < 5.0f)
+                    Speed_base = 1600;
+                else if (fabs(g_track_result.steering_value) < 9.0f)
                     Speed_base = 1500;
                 else
                     Speed_base = 1300;

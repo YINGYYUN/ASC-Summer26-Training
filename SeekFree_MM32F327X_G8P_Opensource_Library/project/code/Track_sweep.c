@@ -492,6 +492,14 @@ static void calc_steering_value(void)
         if (w > STEER_W_FAR) w = STEER_W_FAR;
     }
     g_track_result.steering_value = (total_w > 0.0f) ? (total_dev / total_w) : 0.0f;
+
+    // 一阶低通滤波：平滑帧间跳变
+    #define STEER_FILTER_NEW  0.8f
+    #define STEER_FILTER_OLD  0.2f
+    static float s_steer_filtered = 0.0f;
+    s_steer_filtered = STEER_FILTER_NEW * g_track_result.steering_value
+                     + STEER_FILTER_OLD * s_steer_filtered;
+    g_track_result.steering_value = s_steer_filtered;
 }
 
 // ============================================================
