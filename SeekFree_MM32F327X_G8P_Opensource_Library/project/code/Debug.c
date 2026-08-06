@@ -864,6 +864,8 @@ int Debug_IMU (void)
 {
     Debug_IMU_UI();
 
+    uint8_t Slope_flag = 0;
+
     // 干脆总是存在一个没有校准陀螺仪就校准陀螺仪的设定
 
     /* 半阻塞式IMU963RA零飘此时请保持静此时请保持静止)*/
@@ -945,6 +947,8 @@ int Debug_IMU (void)
 
             // 姿态解算
             IMU_Update_Analysis();
+
+            Slope_flag = Slope_Detection();
         }
 
 
@@ -965,6 +969,7 @@ int Debug_IMU (void)
             // ips200_printf(24 ,192, "%d   ", imu963ra_mag_z);
 
             ips200_printf(32 ,256, "%.2f  ", Pitch_Result);
+            ips200_printf(32 ,272, "%d ", Slope_flag);
         }
     }
 }

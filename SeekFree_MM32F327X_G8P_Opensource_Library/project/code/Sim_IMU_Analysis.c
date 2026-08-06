@@ -17,6 +17,9 @@
 volatile float Pitch_Result = 0.0f;  // 俯仰角（Pitch）
 // IMU 数据采集和分析使能标志位
 volatile uint8_t IMU_D_and_A_Enable = 0;
+
+// 坡道状态（外部可复位）
+static uint8 slope_state = 0;  // 0=平地  1=上坡  2=下坡
 /*======================================================*/
 /**********************************************[全局变量]*/
 /*======================================================*/
@@ -206,30 +209,77 @@ void IMU_Gyro_Apply(Gyro_Calib_StructDef *cal, float *gx, float *gy, float *gz)
 //-------------------------------------------------------------------------------------------------------------------
 void IMU_Update_Analysis(void)
 {
-    int16_t gy_raw;          // 陀螺仪 X 轴原始值（校准+死区后）
-    float pitch_acc;         // 加速度计计算的俯仰角
+    int16_t gy_x;            // 陀螺仪俯仰(X)轴原始值（X=左右, Y=前进, Z=垂直）
     float pitch_gyro;        // 陀螺仪积分的俯仰角
 
-    // 加速度计俯仰角 (°) — Y/Z 轴（车前进方向/垂直）
-    pitch_acc = -atan2f(imu963ra_acc_transition(imu963ra_acc_y),
-                        imu963ra_acc_transition(imu963ra_acc_z)) * 57.29578f;
-
-    // 陀螺仪 X 轴：校准 + 死区 + 转 °/s
-    gy_raw = imu963ra_gyro_x;
+    // 陀螺仪俯仰轴(X)：校准 + 死区 + 转 °/s
+    gy_x = imu963ra_gyro_x;
     if (gyro_cal.calib_state == GYRO_CALIB_STATE_DONE)
     {
-        gy_raw -= gyro_cal.offset_x;
+        gy_x -= gyro_cal.offset_x;
     }
-    if (-7 < gy_raw && gy_raw < 7)
+    else
     {
-        gy_raw = 0;
+        gy_x += 5;
+    }
+
+    if (-7 < gy_x && gy_x < 7)
+    {
+        gy_x = 0;
     }
 
     // 陀螺仪积分俯仰角 (°)
-    pitch_gyro = Pitch_Result + (float)gy_raw / imu963ra_transition_factor[0] * IMU_DT;
+    pitch_gyro = Pitch_Result + (float)gy_x / imu963ra_transition_factor[0] * IMU_DT;
 
-    // 互补滤波：alpha = 0.08，时间常数约 0.12s @100Hz（快速上坡检测）
-    Pitch_Result = 0.08f * pitch_acc + 0.92f * pitch_gyro;
+    // 互补滤波：可变 alpha — 前向加速越大，acc 修正越弱（但不完全关闭）
+    float ay = imu963ra_acc_transition(imu963ra_acc_y);
+    float az = imu963ra_acc_transition(imu963ra_acc_z);
+    float ay_abs = fabs(ay);
+    float alpha;
+    if      (ay_abs < 0.05f) alpha = 0.15f;  // 静止/滑行，0.07s 响应
+    else if (ay_abs < 0.20f) alpha = 0.05f;  // 温和加速，0.2s 响应
+    else                     alpha = 0.02f;  // 剧烈加速，0.5s 修正
+
+    float pitch_acc = -atan2f(ay, az) * 57.29578f;
+    Pitch_Result = alpha * pitch_acc + (1.0f - alpha) * pitch_gyro;
+}
+
+//-------------------------------------------------------------------------------------------------------------------
+// 函数简介     坡道状态判定（包裹 IMU_Update_Analysis + 状态机）
+// 返回参数     uint8           0=平地  1=上坡  2=下坡
+// 备注信息     上坡>12°, 下坡<-12°, 回到平地需 |Pitch|<4° (带迟滞)
+//              调用前需先读 IMU 数据 (imu963ra_get_acc / IMU_Update_Data)
+//-------------------------------------------------------------------------------------------------------------------
+uint8 Slope_Detection(void)
+{
+    IMU_Update_Analysis();
+    float pitch = Pitch_Result;
+
+    switch (slope_state)
+    {
+        case 0:  // 平地
+            if (pitch >  12.0f) slope_state = 1;       // → 上坡
+            break;
+        case 1:  // 上坡 — 只能经由下坡回到平地，防止山脊误判
+            if (pitch < -12.0f) slope_state = 2;       // → 过山脊进下坡
+            break;
+        case 2:  // 下坡
+            if (fabs(pitch) < 4.0f) slope_state = 0;  // → 回到平地
+            break;
+        default:
+            slope_state = 0;
+            break;
+    }
+
+    return slope_state;
+}
+
+//-------------------------------------------------------------------------------------------------------------------
+// 函数简介     重置坡道状态机（发车时调用）
+//-------------------------------------------------------------------------------------------------------------------
+void Slope_Reset(void)
+{
+    slope_state = 0;
 }
 
 /*======================================================*/

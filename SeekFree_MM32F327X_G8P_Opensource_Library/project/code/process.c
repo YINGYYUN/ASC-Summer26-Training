@@ -61,6 +61,7 @@ int main_process(void)
         if (KEY_SHORT_PRESS == key_get_state(KEY_CONFIRM))
         {
             key_clear_state(KEY_CONFIRM);
+            Slope_Reset();
             // 发车：先进入起步斜坡
             speed_ramp_cnt = 0;
             // 斑马线计数重置
@@ -135,17 +136,23 @@ int main_process(void)
 
             if (car_state == Car_Running || car_state == Car_Launching)
             {
-                imu963ra_get_gyro();
+                IMU_Update_Data();
 
                 // 速度分级：赛道偏差小 → 高速，偏差大 → 低速
 				if (fabs(g_track_result.steering_value) < 1.0f)
                     Speed_base = 1700;
-				else if (fabs(g_track_result.steering_value) < 5.0f)
+				else if (fabs(g_track_result.steering_value) < 4.0f)
                     Speed_base = 1600;
-                else if (fabs(g_track_result.steering_value) < 9.0f)
-                    Speed_base = 1500;
+                else if (fabs(g_track_result.steering_value) < 8.0f)
+                    Speed_base = 1400;
                 else
                     Speed_base = 1300;
+
+                // if (Slope_Detection() != 0)
+                // {
+                //     g_track_result.steering_value = 0;
+                //     Speed_base = 1500;
+                // }
 
                 // 起步斜坡：在 Launching 状态线性爬升 Speed_base，完成后切到 Running
 				// 通过乘 factor 系数实现
@@ -186,9 +193,7 @@ int main_process(void)
             // 调试：观察赛道偏差和基础速度
             ips200_show_float(0, 160, g_track_result.steering_value, 6, 2);
             ips200_show_uint (120, 160, (uint16)Speed_base, 4);
-            ips200_show_float(0, 176, Steer_Ctrl_PPDD.Out, 6, 2);
-            // ips200_show_float(0, 176, Steer_PID.Out, 6, 2);
-            // ips200_show_float(120, 176, GZ_PID.Out, 6, 2);
+            // ips200_show_float(0, 176, Steer_Ctrl_PPDD.Out, 6, 2);
         }
     }
 }
